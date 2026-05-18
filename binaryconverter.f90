@@ -36,7 +36,8 @@ do while(l>-1)
 end do
 !Check if it's positive or negative using sign variable
 if(q.ne.1) then 
-    write(*,*)binary
+    write(*,200)binary
+    200 format (64I3)
 else
     call twosComplement(binary) !!Call statement very important for a subroutine
 end if
@@ -63,7 +64,8 @@ do i=size(arr),0,-1 !This loop handles adding 1 to the bit-flipped binary number
         arr(i)=0
    end if
 end do
-write(*,*)arr
+write(*,200)arr
+200 format(64I3)
 return
 end subroutine twosComplement
 end program convertBinary
