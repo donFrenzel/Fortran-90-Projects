@@ -14,7 +14,7 @@ allocate(retMatrix(n,m))
 
 !remember that n = nRows, m = nCols
 !! Insert file values into the matrix from input 10.
-open(20,file='sample_matrix_input.txt', status='old')
+open(20,file='matrix.txt', status='old')
 !! Create file-read method for this.  Basically just from one input to another, or allow multi-input?  File works better I think.  
 do i=1,n,1
     do j=1,m,1
@@ -36,7 +36,8 @@ end do
 
 !mymatrix = transpose(mymatrix)
 call printMatrix(mymatrix,n,m)
-call GaussJordan(mymatrix,retMatrix,n,m) !Remember, subroutines modify the values in-place.  So RREF can be called using the result.  
+!call GaussJordan(mymatrix,retMatrix,n,m) !Remember, subroutines modify the values in-place.  So RREF can be called using the result.  
+call RREF(mymatrix,retMatrix,n,m)
 mymatrix = retMatrix
 
 call printMatrix(mymatrix,n,m)
@@ -45,8 +46,9 @@ call printMatrix(mymatrix,n,m)
 close(20)
 stop
 !primary program is done!
-!Define print matrix function; inputs are the matrix and number of rows.
+
 contains 
+!Define print matrix subroutine; inputs are the matrix and number of rows.  Rets matrix as-is.  
 subroutine printMatrix(matrix,n,m)
 implicit none
 integer::n,m,k
@@ -87,9 +89,40 @@ end subroutine GaussJordan
 !Remember, a subroutine returns the value in place.  Return var specified at the top. 
 subroutine RREF(matrix, retMatrix, n, m)
 implicit none
-integer::n,m
+integer::n,m,i,k
+real::currVal,nextVal
 real,dimension(n,m)::matrix, retMatrix
+real,dimension(m)::selectedRow
 retMatrix = matrix !swaps returnMatrix for the original input
-
+do i=1, m-1, 1
+    currVal=retMatrix(i,i)
+    retMatrix(i,:)=retMatrix(i,:)/currVal !Reduces the row to it's leading 1 form.  
+    selectedRow = retMatrix(i,:)
+    !find succeeding values in the next row (needs a ceiling)
+    do k=i, n-1, 1
+        nextVal = retMatrix(k+1,i) 
+        !varRow = retMatrix(k+1,:)
+        retMatrix(k+1,:) = retMatrix(k+1,:)-(selectedRow*nextVal)
+    end do
+end do
+!!Gauss Jordan portion is done.  Now bascially loop backwards in an upper triangular manner and when doing so, grab the values appropriately
+!!of the scalars necessary to zero them out and then 
+do k=m-1, 1, -1
+    do i=k-1, 1, -1
+        !write(*,*)retMatrix(i,k)
+        selectedRow=retMatrix(k,:)
+        nextVal = retMatrix(i,k)
+        retMatrix(i,:)=retMatrix(i,:)-(selectedRow*nextVal)
+    end do
+end do
+!Clean up negative zero values; could be a problem later on.  s
+do i=1, n, 1
+    do k=1, m ,1
+        if (abs(retMatrix(i,k))==0) then
+            retMatrix(i,k)=0
+        end if
+    end do
+end do
 end subroutine RREF
+
 end program matrixOperations
