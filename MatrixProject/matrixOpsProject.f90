@@ -1,4 +1,4 @@
-program matrices2
+program matrixOperations
 implicit none
 !! Takes file as input for matrix values, has output file as well. Creates an allocatable matrix determined by user input.  
 !! Should determine Reduced Row Echelon Form using a radix sort of values
@@ -92,4 +92,4 @@ real,dimension(n,m)::matrix, retMatrix
 retMatrix = matrix !swaps returnMatrix for the original input
 
 end subroutine RREF
-end program matrices2
+end program matrixOperations
