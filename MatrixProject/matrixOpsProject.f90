@@ -15,7 +15,7 @@ allocate(inverse(n,m))
 
 !remember that n = nRows, m = nCols
 !! Insert file values into the matrix from input 10.
-open(20,file='matrix2.txt', status='old')
+open(20,file='sample_matrix_input_sq.txt', status='old')
 !! Create file-read method for this.  Basically just from one input to another, or allow multi-input?  File works better I think.  
 do i=1,n,1
     do j=1,m,1
