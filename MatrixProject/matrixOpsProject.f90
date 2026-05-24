@@ -6,6 +6,7 @@ implicit none
 
 integer::n,m,i,j !Assigns values of row length and column height
 real,dimension(:,:),allocatable::mymatrix,retMatrix
+real::determinant
 
 write(*,*)'Please input the n and m of your matrix.  FORMAT: Num Rows [ENTER] Num Cols [ENTER]' !Takes input and allocates values of the matrix to them.  
 read(*,*)n,m
@@ -14,7 +15,7 @@ allocate(retMatrix(n,m))
 
 !remember that n = nRows, m = nCols
 !! Insert file values into the matrix from input 10.
-open(20,file='matrix.txt', status='old')
+open(20,file='matrix2.txt', status='old')
 !! Create file-read method for this.  Basically just from one input to another, or allow multi-input?  File works better I think.  
 do i=1,n,1
     do j=1,m,1
@@ -23,7 +24,6 @@ do i=1,n,1
     end do
 end do
 !! From there present the options of what can be done, such as finding the span, inverse, etc.  
-
 
 !! Step 1: Get RREF & Also Determinant Check - Write subroutines for these.  
 !! Step 2: Span, Inverse, & Identity Matrix.  
@@ -37,10 +37,13 @@ end do
 !mymatrix = transpose(mymatrix)
 call printMatrix(mymatrix,n,m)
 !call GaussJordan(mymatrix,retMatrix,n,m) !Remember, subroutines modify the values in-place.  So RREF can be called using the result.  
-call RREF(mymatrix,retMatrix,n,m)
-mymatrix = retMatrix
+!call RREF(mymatrix,retMatrix,n,m)
+determinant = det(mymatrix,n,m)
+write(*,*)'Determinant:', determinant !!Unpause this
+!mymatrix = retMatrix
 
-call printMatrix(mymatrix,n,m)
+!call printMatrix(mymatrix,n,m)
+
 !! Conducts RREF through loops.  1 in position is the last one.  Figure out how to tie it to another one or divide it such that it is 1.
 !! Write them to the file as each row is finished.  
 close(20)
@@ -125,4 +128,84 @@ do i=1, n, 1
 end do
 end subroutine RREF
 
+!!!Function for determinant
+real function det(matrix,n,m) RESULT(r)
+implicit none
+integer, intent(in)::n,m
+real,dimension(n,m)::matrix,workMat
+real,dimension(:,:),allocatable::LMatrix
+real,dimension(m)::selectedRow
+real::a,b,c,d,detL,detU, currVal, nextVal, inputVal  !return for determinant
+integer::i,j
+
+if(n/=m) then
+    write(*,*)'Cannot take the determinant of a nonsquare matrix.'
+    return
+end if
+workMat = matrix
+!!!Write the main gaussian upper trianguarization.  
+!check if 2x2matrix
+if(n==2) then
+    a=workMat(1,1)
+    b=workMat(1,2)
+    c=workMat(2,1)
+    d=workMat(2,2)
+    r = ((a*d)-(c*b)) !Calculates determinant of 2x2 matrix specifically; regular algorithm will not work.  
+    return
+end if
+
+!
+if(n>2) then
+    !Go through and construct upper triangular matrix while keeping track of diagonals as entries.  
+    !Do Gauss-Jordan Elimination Method but only to the second-to-last column for U.  While doing this, keep track of the multiplicants and 
+    !input those values into the L matrix in their respective positions (which is the identity matrix to that point.)
+    !Then take the multiplication of the diagonals of both (i.e. the determinant) and multiply them together to get the diagonal of the whole matrix.  
+    !allocate identity matrix next.  
+    allocate(LMatrix(n,m), source=0.0) !allocates the memory to it and fills all values with zeroes.    
+    
+    !first fill L matrix with 1's along the diagonal. 
+    do i=1,n,1
+        LMatrix(i,i)=1.0
+    end do
+    !Now fill out the U (upper triangular) matrix.  
+    do i=1, m-1, 1
+        selectedRow = workMat(i,:)
+        currVal = workMat(i,i)
+        do j=i, n-1, 1
+            nextVal = workMat(j+1,i) !!Nextval will be input into its place in the identity matrix.  
+            inputVal=(nextVal/currVal) !inputVal is to be entered into the precise place in the iMatrix
+            LMatrix(j+1,i)=inputVal
+            workMat(j+1,:)=workMat(j+1,:)-(selectedRow*inputVal)
+        end do
+    end do
+!call printMatrix(LMatrix,n,m) !L Matrix
+!call printMatrix(workMat,n,m) !U Matrix
+!Get the determinant of the U matrix
+do i=1,n,1
+    currVal=workMat(i,i)
+    if(i==1) then
+        detU=currVal
+    else
+        detU=detU*currVal
+    end if
+end do
+!Get the determinant of the L matrix
+do i=1,n,1
+    currVal=LMatrix(i,i)
+    if(i==1) then
+        detL=currVal
+    else
+        detL=detL*currVal
+    end if
+end do
+r = detU*detL
+
+end if 
+
+ 
+end function det
+
+
 end program matrixOperations
+
+!!Create a function for the determinant.  
