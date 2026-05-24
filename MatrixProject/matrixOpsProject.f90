@@ -25,8 +25,8 @@ do i=1,n,1
 end do
 !! From there present the options of what can be done, such as finding the span, inverse, etc.  
 
-!! Step 1: Get Gauss-Jordan Elim, RREF, Determinant, Identity - Write subroutines or functions for these.  
-!! Step 2: Span, Rank, Inverse.   
+!! Step 1: Get Gauss-Jordan Elim, RREF - Write subroutines or functions for these.  
+!! Step 2: Span, Rank, Inverse[X], Determinant[X], Identity[X].   
 !! Step 3: Eigenvalues/Eigenmatrices
 
 !prints matrix first by rows, then by columns
@@ -53,9 +53,7 @@ close(20)
 deallocate(mymatrix)
 stop
 !primary program is done!
-
 contains 
-
 !Define print matrix subroutine; inputs are the matrix and number of rows.  Rets matrix as-is.  
 subroutine printMatrix(matrix,n,m)
 implicit none
@@ -264,10 +262,9 @@ do i=n,1,-1
     end do
 end do
 UMatrix = iMatrix
-!call printMatrix(LMatrix,n,m)
-!call printMatrix(iMatrix,n,m)
-!Now that both U and L are inversed as LMatrix and UMatrix, the actual matrix's inverse can be found by multiplying the two together.  
+!Now that both U and L are inversed as LMatrix and UMatrix, the actual matrix's inverse can be found by multiplying the two together. 
+!A=LU so Ainv=U_inv*L_inv 
 invMat = matmul(UMatrix,LMatrix)
-
 end function inv
+
 end program matrixOperations
