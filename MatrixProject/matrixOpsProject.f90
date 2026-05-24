@@ -3,15 +3,15 @@ implicit none
 !! Takes file as input for matrix values, has output file as well. Creates an allocatable matrix determined by user input.  
 !! Should determine Reduced Row Echelon Form using a radix sort of values
 !! NOTE: MAKE SURE THAT THE FILE IS WRITTEN IN ORDER: FIRST ROW->NthRow n=noRows, m = noCols
-
 integer::n,m,i,j !Assigns values of row length and column height
-real,dimension(:,:),allocatable::mymatrix,retMatrix
+real,dimension(:,:),allocatable::mymatrix,retMatrix,inverse
 real::determinant
 
 write(*,*)'Please input the n and m of your matrix.  FORMAT: Num Rows [ENTER] Num Cols [ENTER]' !Takes input and allocates values of the matrix to them.  
 read(*,*)n,m
 allocate(mymatrix(n,m)) !!Should allocate the necessary memory for an array of a given size.  Need to review booleans.  
 allocate(retMatrix(n,m))
+allocate(inverse(n,m))
 
 !remember that n = nRows, m = nCols
 !! Insert file values into the matrix from input 10.
@@ -25,9 +25,9 @@ do i=1,n,1
 end do
 !! From there present the options of what can be done, such as finding the span, inverse, etc.  
 
-!! Step 1: Get RREF & Also Determinant Check - Write subroutines for these.  
-!! Step 2: Span, Inverse, & Identity Matrix.  
-!! Step 3: 
+!! Step 1: Get Gauss-Jordan Elim, RREF, Determinant, Identity - Write subroutines or functions for these.  
+!! Step 2: Span, Rank, Inverse.   
+!! Step 3: Eigenvalues/Eigenmatrices
 
 !prints matrix first by rows, then by columns
 !FOR ENTRY OF MATRIX VIA TXT: Format is: Each subsequent value is a column.  It goes first line, second line third line; those are
@@ -35,22 +35,27 @@ end do
 !It must be entered as 2 (num rows) and then 3 (num columns).  
 
 !mymatrix = transpose(mymatrix)
+write(*,*)'Input Matrix:'
 call printMatrix(mymatrix,n,m)
 !call GaussJordan(mymatrix,retMatrix,n,m) !Remember, subroutines modify the values in-place.  So RREF can be called using the result.  
 !call RREF(mymatrix,retMatrix,n,m)
+
 determinant = det(mymatrix,n,m)
-write(*,*)'Determinant:', determinant !!Unpause this
+write(*,*)'The Determinant of the Matrix is:', determinant
+write(*,*)
+inverse = inv(mymatrix,n,m)
+write(*,*)'The Inverse of the Matrix is:'
+call printMatrix(inverse,n,m)
 !mymatrix = retMatrix
 
 !call printMatrix(mymatrix,n,m)
-
-!! Conducts RREF through loops.  1 in position is the last one.  Figure out how to tie it to another one or divide it such that it is 1.
-!! Write them to the file as each row is finished.  
 close(20)
+deallocate(mymatrix)
 stop
 !primary program is done!
 
 contains 
+
 !Define print matrix subroutine; inputs are the matrix and number of rows.  Rets matrix as-is.  
 subroutine printMatrix(matrix,n,m)
 implicit none
@@ -132,7 +137,8 @@ end subroutine RREF
 real function det(matrix,n,m) RESULT(r)
 implicit none
 integer, intent(in)::n,m
-real,dimension(n,m)::matrix,workMat
+real,dimension(n,m), intent(in)::matrix
+real, dimension(n,m)::workMat
 real,dimension(:,:),allocatable::LMatrix
 real,dimension(m)::selectedRow
 real::a,b,c,d,detL,detU, currVal, nextVal, inputVal  !return for determinant
@@ -154,7 +160,6 @@ if(n==2) then
     return
 end if
 
-!
 if(n>2) then
     !Go through and construct upper triangular matrix while keeping track of diagonals as entries.  
     !Do Gauss-Jordan Elimination Method but only to the second-to-last column for U.  While doing this, keep track of the multiplicants and 
@@ -162,7 +167,6 @@ if(n>2) then
     !Then take the multiplication of the diagonals of both (i.e. the determinant) and multiply them together to get the diagonal of the whole matrix.  
     !allocate identity matrix next.  
     allocate(LMatrix(n,m), source=0.0) !allocates the memory to it and fills all values with zeroes.    
-    
     !first fill L matrix with 1's along the diagonal. 
     do i=1,n,1
         LMatrix(i,i)=1.0
@@ -178,8 +182,6 @@ if(n>2) then
             workMat(j+1,:)=workMat(j+1,:)-(selectedRow*inputVal)
         end do
     end do
-!call printMatrix(LMatrix,n,m) !L Matrix
-!call printMatrix(workMat,n,m) !U Matrix
 !Get the determinant of the U matrix
 do i=1,n,1
     currVal=workMat(i,i)
@@ -199,13 +201,73 @@ do i=1,n,1
     end if
 end do
 r = detU*detL
-
 end if 
-
- 
 end function det
 
+!!Find the inverse of a matrix using a function to return the pure inverse.  This is done using LU Decomposition
+function inv(matrix,n,m) RESULT(invMat)
+implicit none
 
+integer, intent(in)::n,m
+real,dimension(n,m), intent(in)::matrix
+real,dimension(n,m)::UMatrix,invMat,iMatrix,iMatrix2 !invMat is return value
+real,dimension(:,:),allocatable::LMatrix
+real,dimension(m)::selectedRow,selectedRow2 !second specifically for U inverse.  
+real::currVal,nextVal,inputVal
+
+UMatrix = matrix !Assigns UMat
+allocate(LMatrix(n,m), source=0.0) !allocates the memory to it and fills all values with zeroes.  
+do i=1,n,1
+        LMatrix(i,i)=1.0
+end do
+iMatrix = LMatrix !Assigns identity matrix for later use.  
+iMatrix2 = LMatrix
+!Now fill out the U (upper triangular) matrix.  
+do i=1, m-1, 1
+    selectedRow = UMatrix(i,:)
+    currVal = UMatrix(i,i)
+    do j=i, n-1, 1
+        nextVal = UMatrix(j+1,i) !!Nextval will be input into its place in the identity matrix.  
+        inputVal=(nextVal/currVal) !inputVal is to be entered into the precise place in the iMatrix
+        LMatrix(j+1,i)=inputVal
+        UMatrix(j+1,:)=UMatrix(j+1,:)-(selectedRow*inputVal)
+    end do
+end do
+!!Once U and L Matrices have been gotten, and now they should be, take the inverse of the L Matrix and U Matrix.  
+!Inverse L (L will always have 1's on the diagonal and so inverse will just be negative of lower triangular values)
+!use iMatrix2
+do i=1,n,1
+    selectedRow=LMatrix(i,:)
+    selectedRow2=iMatrix2(i,:)
+
+    currVal = LMatrix(i,i)
+    do j=i+1,n,1
+        !write(*,*)LMatrix(j,i) !grabs correct values
+        nextVal = LMatrix(j,i) 
+        LMatrix(j,:)=LMatrix(j,:)-selectedRow*nextVal
+        iMatrix2(j,:)=iMatrix2(j,:)-selectedRow2*nextVal
+    end do
+end do
+LMatrix = iMatrix2
+!Inverse U, use iMat to set up the whole thing.  Reduce one to all 1's while doing the same movements on the other.  
+!start from (n,n) and then work up the nth column until the first row has been reached.  Then go in and reduce the column by 1 and reduce the row also.  
+do i=n,1,-1
+    currVal=UMatrix(i,i) !Assign currval to what the identity matrix has to be divided by.  
+    iMatrix(i,:)=iMatrix(i,:)/currVal !divide identity matrix by value likewise
+    UMatrix(i,:)=UMatrix(i,:)/currVal
+    selectedRow=UMatrix(i,:)
+    selectedRow2=iMatrix(i,:)
+    do j=i-1,1,-1 !Moves up the rows in specific column
+        nextVal=UMatrix(j,i)!nextval now grabs correct value
+        UMatrix(j,:)=UMatrix(j,:)-selectedRow*nextVal
+        iMatrix(j,:)=iMatrix(j,:)-selectedRow2*nextVal 
+    end do
+end do
+UMatrix = iMatrix
+!call printMatrix(LMatrix,n,m)
+!call printMatrix(iMatrix,n,m)
+!Now that both U and L are inversed as LMatrix and UMatrix, the actual matrix's inverse can be found by multiplying the two together.  
+invMat = matmul(UMatrix,LMatrix)
+
+end function inv
 end program matrixOperations
-
-!!Create a function for the determinant.  
