@@ -3,19 +3,23 @@ implicit none
 !! Takes file as input for matrix values, has output file as well. Creates an allocatable matrix determined by user input.  
 !! Should determine Reduced Row Echelon Form using a radix sort of values
 !! NOTE: MAKE SURE THAT THE FILE IS WRITTEN IN ORDER: FIRST ROW->NthRow n=noRows, m = noCols
-integer::n,m,i,j !Assigns values of row length and column height
-real,dimension(:,:),allocatable::mymatrix,retMatrix,inverse
-real::determinant
+integer::n,m,i,j,retty !Assigns values of row length and column height
+real,dimension(:,:),allocatable::mymatrix,returnMatrix,inv,Q,R
+real,dimension(:),allocatable::vec
+real::determinant,normal
 
 write(*,*)'Please input the n and m of your matrix.  FORMAT: Num Rows [ENTER] Num Cols [ENTER]' !Takes input and allocates values of the matrix to them.  
 read(*,*)n,m
 allocate(mymatrix(n,m)) !!Should allocate the necessary memory for an array of a given size.  Need to review booleans.  
-allocate(retMatrix(n,m))
-allocate(inverse(n,m))
+allocate(returnMatrix(n,m))
+allocate(inv(n,m))
+allocate(vec(m))
+allocate(Q(m,m))
+allocate(R(n,m))
 
 !remember that n = nRows, m = nCols
 !! Insert file values into the matrix from input 10.
-open(20,file='sample_matrix_input_sq.txt', status='old')
+open(20,file='matrix2.txt', status='old')
 !! Create file-read method for this.  Basically just from one input to another, or allow multi-input?  File works better I think.  
 do i=1,n,1
     do j=1,m,1
@@ -40,13 +44,38 @@ call printMatrix(mymatrix,n,m)
 !call GaussJordan(mymatrix,retMatrix,n,m) !Remember, subroutines modify the values in-place.  So RREF can be called using the result.  
 !call RREF(mymatrix,retMatrix,n,m)
 
+!returnMatrix = GaussJordan(mymatrix,n,m)
+!write(*,*)'Gaussian Elim Matrix:'
+!call printMatrix(returnMatrix,n,m)
+!write(*,*)
+
+returnMatrix = RREF(mymatrix,n,m)
+write(*,*)'RREF of Matrix:'
+call printMatrix(returnMatrix,n,m)
+write(*,*)
+
+if (n==m) then
 determinant = det(mymatrix,n,m)
 write(*,*)'The Determinant of the Matrix is:', determinant
 write(*,*)
-inverse = inv(mymatrix,n,m)
+
+inv = inverse(mymatrix,n,m)
 write(*,*)'The Inverse of the Matrix is:'
-call printMatrix(inverse,n,m)
+call printMatrix(inv,n,m)
 !mymatrix = retMatrix
+end if
+
+retty = linearIndependence(mymatrix,n,m)
+call QR(mymatrix,n,m,Q,R)
+call printMatrix(Q,m,m)
+call printMatrix(R,n,m)
+
+
+!!First vector of the matrix
+vec = mymatrix(1,:)
+normal = Norm(vec,m)
+write(*,*)'Normal of the first vector:',normal
+
 
 !call printMatrix(mymatrix,n,m)
 close(20)
@@ -66,10 +95,24 @@ write(*,*)
 return 
 end subroutine printMatrix
 
+!!Function Takes the Norm
+real function Norm(vector,n) RESULT(vectNormal)
+integer::n,i
+real, dimension(n)::vector
+real::sum
+sum=0.0
+!Take square root of the squared sum.  
+do i=1,n,1
+    sum=sum+(vector(i)**2)
+end do 
+vectNormal = sqrt(sum)
+end function Norm
+
 !!!Create GJ Subroutine here:
-subroutine GaussJordan(matrix,retMatrix,n,m) 
+function GaussJordan(matrix,n,m) RESULT(retMatrix)
 implicit none
-integer::n,m,i,k
+integer, intent(in)::n,m
+integer::i,k
 real::currVal,nextVal
 real,dimension(n,m)::matrix, retMatrix
 real,dimension(m)::selectedRow
@@ -89,17 +132,17 @@ do i=1, m-1, 1
         retMatrix(k+1,:) = retMatrix(k+1,:)-(selectedRow*nextVal)
     end do
 end do
-return
-end subroutine GaussJordan
+end function GaussJordan
 
 !Remember, a subroutine returns the value in place.  Return var specified at the top. 
-subroutine RREF(matrix, retMatrix, n, m)
+function RREF(matrix, n, m) RESULT(retMatrix)
 implicit none
-integer::n,m,i,k
-real::currVal,nextVal
+integer::n,m,i,k,g,zeroFlag !g is the row index of the last value of the RREF
+real::currVal,nextVal,normal
 real,dimension(n,m)::matrix, retMatrix
 real,dimension(m)::selectedRow
 retMatrix = matrix !swaps returnMatrix for the original input
+zeroFlag=0
 do i=1, m-1, 1
     currVal=retMatrix(i,i)
     retMatrix(i,:)=retMatrix(i,:)/currVal !Reduces the row to it's leading 1 form.  
@@ -113,14 +156,55 @@ do i=1, m-1, 1
 end do
 !!Gauss Jordan portion is done.  Now bascially loop backwards in an upper triangular manner and when doing so, grab the values appropriately
 !!of the scalars necessary to zero them out and then 
-do k=m-1, 1, -1
-    do i=k-1, 1, -1
-        !write(*,*)retMatrix(i,k)
-        selectedRow=retMatrix(k,:)
-        nextVal = retMatrix(i,k)
-        retMatrix(i,:)=retMatrix(i,:)-(selectedRow*nextVal)
-    end do
+!take the norm of ANY of the rows; if zero then set zero flag.  Assign g to all row ind
+do i=1,n,1
+    selectedRow = retMatrix(i,:)
+    normal = Norm(selectedRow, m)
+    if (normal==0) then
+        g=i-1 !g is the index of the row where the first zero row is.  It sets g=i-1. 
+        zeroFlag=1
+    end if
 end do
+
+!Problem is here.  
+!Check to see if a zero row has been detected before proceeding.  
+if(zeroFlag==1) then
+    do k=g-1, 1, -1
+        do i=k-1, 1, -1
+            !write(*,*)retMatrix(i,k)
+            selectedRow=retMatrix(k,:)
+            nextVal = retMatrix(i,k)
+            retMatrix(i,:)=retMatrix(i,:)-(selectedRow*nextVal)
+        end do
+    end do
+
+!add new small loop if the matrix is square to clean up final column values
+    if (n==m) then
+        retMatrix(g,:)=retMatrix(g,:)/retMatrix(g,g) !sets it to 1 if 1
+        selectedRow = retMatrix(g,:)
+        do i=g-1,1,-1
+            nextVal = retMatrix(i,g)
+            retMatrix(i,:)=retMatrix(i,:)-(selectedRow*nextVal)
+        end do
+    end if
+else
+    do k=m-1, 1, -1
+        do i=k-1, 1, -1
+        !write(*,*)retMatrix(i,k)
+            selectedRow=retMatrix(k,:)
+            nextVal = retMatrix(i,k)
+            retMatrix(i,:)=retMatrix(i,:)-(selectedRow*nextVal)
+        end do
+    end do
+    if (n==m) then
+        retMatrix(n,:)=retMatrix(n,:)/retMatrix(n,n) !sets it to 1 if 1
+        selectedRow = retMatrix(n,:)
+        do i=n-1,1,-1
+            nextVal = retMatrix(i,n)
+            retMatrix(i,:)=retMatrix(i,:)-(selectedRow*nextVal)
+        end do
+    end if
+end if
 !Clean up negative zero values; could be a problem later on.  s
 do i=1, n, 1
     do k=1, m ,1
@@ -129,7 +213,7 @@ do i=1, n, 1
         end if
     end do
 end do
-end subroutine RREF
+end function RREF
 
 !!!Function for determinant
 real function det(matrix,n,m) RESULT(r)
@@ -203,9 +287,8 @@ end if
 end function det
 
 !!Find the inverse of a matrix using a function to return the pure inverse.  This is done using LU Decomposition
-function inv(matrix,n,m) RESULT(invMat)
+function inverse(matrix,n,m) RESULT(invMat)
 implicit none
-
 integer, intent(in)::n,m
 real,dimension(n,m), intent(in)::matrix
 real,dimension(n,m)::UMatrix,invMat,iMatrix,iMatrix2 !invMat is return value
@@ -265,6 +348,76 @@ UMatrix = iMatrix
 !Now that both U and L are inversed as LMatrix and UMatrix, the actual matrix's inverse can be found by multiplying the two together. 
 !A=LU so Ainv=U_inv*L_inv 
 invMat = matmul(UMatrix,LMatrix)
-end function inv
+end function inverse
 
+
+
+!Linear Independence Checker 
+integer function linearIndependence(matrix,n,m) RESULT(output)
+integer::n,m,i,j,zeroFlag,countPivots
+real,dimension(n,m)::matrix,retMatrix
+real::currVal
+countPivots=0
+zeroFlag = 0
+!!Use Gaussian Elim since its the quickest. Output is a 0 or a 1; 1 being linearly independent, 0 being linearly dependent. 
+!call printMatrix(retMatrix,n,m)
+!!Take gaussian elimination and then count rows which consist of only zeroes.  
+retMatrix = GaussJordan(matrix,n,m)
+!call printMatrix(retMatrix,n,m)
+!we know that there are m columns in the matrix.  
+!Now comb through and make sure that every row posesses a leading/pivot value on the diagonal.  If it does not, raise the zero flag and immediately return a 0.  
+!Every column must have a pivot value.  So keep a count of the pivot values.  
+!find first nonzero entry in the row.  Get the column it corresponds to.  
+do i=1,n,1
+    do j=1,m,1
+        currVal=retMatrix(i,j)
+        if (currVal/=0.0) then 
+            countPivots=countPivots+1
+            exit
+        end if
+    end do
+end do
+if (countPivots<m) then 
+    output=0
+    !write(*,*)'LINEARLY DEPENDENT'
+else 
+    output=1
+    !write(*,*)'LINEARLY INDEPENDENT'
+end if
+end function linearIndependence
+
+!Rank does Gaussian Elim, then checks to see how many nonzero rows exist.  Rank is the count of such vectors. 
+subroutine QR(matrix,n,m,Q,R)
+integer::n,m,isLinInd
+real,dimension(n,m)::matrix
+real,dimension(m,m),intent(out)::Q
+real,dimension(n,m),intent(out)::R
+real,dimension(n)::v !used for the QR decomposition portion of this
+Q=0!Sets all values of the matrix to zero.  
+R=0
+!!Check first to see if the given matrix is linearly independent or not
+isLinInd = linearIndependence(matrix,n,m)
+!exit subroutine fail if the matrix is lin dep. 
+if (isLinInd==0) then
+    write(*,*)'FAILURE: Cannot perform Graham Schmidt QR Decomp if matrix is linearly dependent.'
+    return
+end if
+!selectedCol=matrix(:,n) !should get last column of values
+!Modified Graham Schmidt Method - more generally applicable. 
+do j=1,m,1
+    v = matrix(:,j)
+    do i=1,j,1
+        R(i,j)=dot_product(Q(:,i),matrix(:,j))
+        v = v-R(i,j)*Q(:,i)
+    end do
+    R(j,j) = Norm(v,n)
+    Q(:,j) = v/(R(j,j))
+end do
+end subroutine QR !Must be subroutine to return both Q and R.  
+
+!! Pseudo-Inverse() should return the pseudo-inverse of a given matrix.  Any size.  Function should work.  
+!! Method: Graham Schmidt for QR Decomposition
+
+
+!also make Span(), Rank()
 end program matrixOperations
