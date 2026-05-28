@@ -5,7 +5,7 @@ implicit none
 !! NOTE: MAKE SURE THAT THE FILE IS WRITTEN IN ORDER: FIRST ROW->NthRow n=noRows, m = noCols
 integer::n,m,i,j,retty !Assigns values of row length and column height
 real,dimension(:,:),allocatable::mymatrix,returnMatrix,inv,Q,R,reye
-real,dimension(:),allocatable::vec
+real,dimension(:),allocatable::vec,eigs
 real::determinant,normal
 
 write(*,*)'Please input the n and m of your matrix.  FORMAT: Num Rows [ENTER] Num Cols [ENTER]' !Takes input and allocates values of the matrix to them.  
@@ -17,10 +17,11 @@ allocate(vec(m))
 allocate(Q(m,m))
 allocate(R(n,m))
 allocate(reye(n,m))
+allocate(eigs(m))
 
 !remember that n = nRows, m = nCols
 !! Insert file values into the matrix from input 10.
-open(20,file='matrix2.txt', status='old')
+open(20,file='matrix.txt', status='old')
 !! Create file-read method for this.  Basically just from one input to another, or allow multi-input?  File works better I think.  
 do i=1,n,1
     do j=1,m,1
@@ -67,11 +68,13 @@ call printMatrix(inv,n,m)
 end if
 
 retty = linearIndependence(mymatrix,n,m)
-call QR(mymatrix,n,m,Q,R)
-call printMatrix(Q,m,m)
-call printMatrix(R,n,m)
+!call QR(mymatrix,n,m,Q,R)
+!call printMatrix(Q,m,m)
+!call printMatrix(R,n,m)
 
-reye = eye(n,m)
+eigs = eigenvals(mymatrix,n,m)
+call printMatrix(eigs,1,m)
+!reye = eye(n,m)
 
 !!First vector of the matrix
 vec = mymatrix(1,:)
@@ -445,8 +448,45 @@ do j=1+actRightShift,m,1
     eyeMatrix(i,j)=1.0
     i=i+1
 end do
-call printMatrix(eyeMatrix,n,m)
+!call printMatrix(eyeMatrix,n,m)
 end function
 
+!Take the eigen QR of a matrix
+function eigenvals(inMatrix,n,m,iterations) RESULT(eigens)
+integer,intent(in)::n,m
+integer,intent(in),optional::iterations
+real, dimension(n,m), intent(in)::inMatrix
+integer::i,actIters
+real, dimension(n,m)::eigenMatrix,R
+real, dimension(m,m)::Q
+real, dimension(m)::eigens
+!!!Check input options to make sure that they're properly there.  
+if(present(iterations)) then
+    actIters=iterations
+else
+    actIters = 1000
+end if
+eigenMatrix=inMatrix !assign copy.   
+!now the actual algorithm implementation
+do i=1,actIters,1
+    !these two work well enough with 1000 iters for 3x3, 4x4 as well.  Tolerance very good.  
+    call QR(eigenMatrix,n,m,Q,R)
+    eigenMatrix= matmul(R,Q)
+end do
+!Isolate eigenvalues from main diagonal.  CURRENTLY UNSORTED
+do i=1,m,1
+    eigens(i)=eigenMatrix(i,i)
+end do
+end function eigenvals
+
+
+
+!Add a sorting algorithm of some variety for the eigenvalues
 !also make Span(), Rank()
+!!Subroutine for SVD
+subroutine SVD(inMatrix, n, m)
+integer::n,m
+real, dimension(n,m)::inMatrix
+
+end subroutine 
 end program matrixOperations
