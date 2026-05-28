@@ -4,7 +4,7 @@ implicit none
 !! Should determine Reduced Row Echelon Form using a radix sort of values
 !! NOTE: MAKE SURE THAT THE FILE IS WRITTEN IN ORDER: FIRST ROW->NthRow n=noRows, m = noCols
 integer::n,m,i,j,retty !Assigns values of row length and column height
-real,dimension(:,:),allocatable::mymatrix,returnMatrix,inv,Q,R
+real,dimension(:,:),allocatable::mymatrix,returnMatrix,inv,Q,R,reye
 real,dimension(:),allocatable::vec
 real::determinant,normal
 
@@ -16,6 +16,7 @@ allocate(inv(n,m))
 allocate(vec(m))
 allocate(Q(m,m))
 allocate(R(n,m))
+allocate(reye(n,m))
 
 !remember that n = nRows, m = nCols
 !! Insert file values into the matrix from input 10.
@@ -70,6 +71,7 @@ call QR(mymatrix,n,m,Q,R)
 call printMatrix(Q,m,m)
 call printMatrix(R,n,m)
 
+reye = eye(n,m)
 
 !!First vector of the matrix
 vec = mymatrix(1,:)
@@ -418,6 +420,33 @@ end subroutine QR !Must be subroutine to return both Q and R.
 !! Pseudo-Inverse() should return the pseudo-inverse of a given matrix.  Any size.  Function should work.  
 !! Method: Graham Schmidt for QR Decomposition
 
+!!!Eigenvalues and shittt.  
+!!For storing the values of the eigenstuff
+!Eye function analog to numpy.eye
+function eye(n,m,rightShift,downShift) RESULT(eyeMatrix)
+implicit none
+integer, intent(in)::n,m
+integer, intent(in), optional::rightShift,downShift
+integer::actRightShift,actDownShift,j
+real,dimension(n,m)::eyeMatrix
+eyeMatrix=0
+if (present(rightShift)) then
+    actRightShift=rightShift
+else
+    actRightShift=0
+end if
+if (present(downShift)) then 
+    actDownShift=downShift
+else
+    actDownShift=0
+end if
+i=1+actDownShift
+do j=1+actRightShift,m,1
+    eyeMatrix(i,j)=1.0
+    i=i+1
+end do
+call printMatrix(eyeMatrix,n,m)
+end function
 
 !also make Span(), Rank()
 end program matrixOperations
