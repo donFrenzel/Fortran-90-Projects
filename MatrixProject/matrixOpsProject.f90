@@ -496,6 +496,69 @@ integer::n,m
 real, dimension(n,m)::inMatrix
 end subroutine 
 
+
+!Create function for the outer Product of two vectors; useful in Hesseberg stuff.  
+function outerProduct(v1,v2) RESULT(outMatrix)
+implicit none
+integer::vecLen1,vecLen2
+real, intent(in)::v1(:),v2(:)!NOTE: This is how you make the function automatically allocate variable inputs
+real, dimension(:,:),allocatable::outMatrix,v1R,v2T
+vecLen1 = size(v1)
+vecLen2 = size(v2)
+!Allocate memory to fit the given sizes.  !Both are represented as columns with form (:,1), with form (1,:).  Pass both as columns and then transpose. 
+allocate(outMatrix(vecLen1,vecLen2))!Allocates for the outmatrix
+allocate(v2T(1,vecLen2))
+allocate(v1R(vecLen1,1))
+v2T = reshape(v2, shape=[1,vecLen2])!Performs a transpose.  
+v1R = reshape(v1, shape=[vecLen1,1])
+!now perform the multiplication
+!call printMatrix(v1,vecLen1,1)
+!call printMatrix(v2T,1,vecLen2)
+outMatrix = matmul(v1R,v2T)
+!call printMatrix(outMatrix,vecLen1,vecLen2)
+deallocate(v1R,v2T)
+end function outerProduct
+
+!Kronecker Product (Outer product for two matrices)
+function kroneckerProduct(m1,m2) RESULT(outMatrix)
+implicit none
+integer::m1Cols,m1Rows,m2Cols,m2Rows !For matrix heights and widths; necessary in this.
+integer::i,j,k,q
+real, intent(in)::m1(:,:),m2(:,:)
+real, dimension(:,:),allocatable::outMatrix
+m1Cols = size(m1, dim=2) !#columns
+m1Rows = size(m1, dim=1) !#rows
+m2Cols = size(m2,dim=2)
+m2Rows = size(m2,dim=1)
+allocate(outMatrix(m1Rows*m2Rows,m1Cols*m2Cols)) !Allocates towards size of output.  
+do i=1,m1Rows,1
+    do j=1,m1Cols,1
+        do k=1,m2Rows,1
+            do q=1,m2Cols,1
+                outMatrix((i*m2Rows+k),(j*m2Cols+q)) = m1(i,j)*m2(k,q)
+            end do
+        end do
+    end do
+end do
+end function kroneckerProduct
+
+function hessenberg(inMatrix) RESULT(outMatrix)
+real, intent(in)::inMatrix(:,:)
+real, dimension(:,:),allocatable::outMatrix
+real, dimension(:),allocatable::x
+integer::n,m,i,j
+n = size(inMatrix,dim=1) !#rows
+m = size(inMatrix,dim=2) !#cols
+allocate(outMatrix(n,m))
+allocate(x(m))
+!Now translate the python code to do Hessenberg reduction.  
+do i=1,m-2,1
+    x = inMatrix(i+1:m,i)
+    !Continue from here.  
+end do
+
+end function hessenberg
+
 !!!sign function: Return 1 if positive or 0 val, return -1 if negative.
 function sgn(val) RESULT(retVal)
 implicit none
@@ -506,26 +569,5 @@ else
     retVal=-1.0
 end if
 end function sgn
-
-!Create function for the outer Product of two vectors; useful in Hesseberg stuff.  
-function outerProduct(v1,v2) RESULT(outMatrix)
-implicit none
-integer::vecLen1,vecLen2
-real, intent(in)::v1(:) !NOTE: This is how you make the function automatically allocate variable inputs
-real, intent(in)::v2(:)
-real, dimension(:,:),allocatable::outMatrix,v2T
-vecLen1 = size(v1)
-vecLen2 = size(v2)
-!Get sizes of the two vectors.  
-!Allocate memory to fit the given sizes.  !Both are represented as columns with form (:,1), with form (1,:).  Pass both as columns and then transpose. 
-allocate(outMatrix(vecLen1,vecLen2))!Allocates for the outmatrix
-allocate(v2T(1,vecLen2))
-v2T = reshape(v2, shape=[1,vecLen2])!Performs a transpose.  
-!now perform the multiplication
-call printMatrix(v1,vecLen1,1)
-call printMatrix(v2T,1,vecLen2)
-
-
-end function outerProduct
 
 end program matrixOperations
