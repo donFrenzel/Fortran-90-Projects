@@ -4,8 +4,8 @@ implicit none
 !! Should determine Reduced Row Echelon Form using a radix sort of values
 !! NOTE: MAKE SURE THAT THE FILE IS WRITTEN IN ORDER: FIRST ROW->NthRow n=noRows, m = noCols
 integer::n,m,i,j,retty !Assigns values of row length and column height
-real,dimension(:,:),allocatable::mymatrix,returnMatrix,inv,Q,R,reye
-real,dimension(:),allocatable::vec,eigs
+real,dimension(:,:),allocatable::mymatrix,returnMatrix,inv,Q,R,reye,outerprod
+real,dimension(:),allocatable::vec,eigs,vec2,vec3
 real::determinant,normal
 
 write(*,*)'Please input the n and m of your matrix.  FORMAT: Num Rows [ENTER] Num Cols [ENTER]' !Takes input and allocates values of the matrix to them.  
@@ -18,10 +18,13 @@ allocate(Q(m,m))
 allocate(R(n,m))
 allocate(reye(n,m))
 allocate(eigs(m))
+allocate(vec2(n))
+allocate(vec3(n))
+allocate(outerProd(m,n))
 
 !remember that n = nRows, m = nCols
 !! Insert file values into the matrix from input 10.
-open(20,file='matrix.txt', status='old')
+open(20,file='matrix2.txt', status='old')
 !! Create file-read method for this.  Basically just from one input to another, or allow multi-input?  File works better I think.  
 do i=1,n,1
     do j=1,m,1
@@ -72,6 +75,7 @@ retty = linearIndependence(mymatrix,n,m)
 !call printMatrix(Q,m,m)
 !call printMatrix(R,n,m)
 
+write(*,*)'The Eigenvalues of the Matrix are:'
 eigs = eigenvals(mymatrix,n,m)
 call printMatrix(eigs,1,m)
 !reye = eye(n,m)
@@ -81,6 +85,9 @@ vec = mymatrix(1,:)
 normal = Norm(vec,m)
 write(*,*)'Normal of the first vector:',normal
 
+vec2 = mymatrix(:,1)
+vec3 = myMatrix(:,2)
+outerprod = outerProduct(vec2,vec3)
 
 !call printMatrix(mymatrix,n,m)
 close(20)
@@ -453,6 +460,7 @@ end function
 
 !Take the eigen QR of a matrix
 function eigenvals(inMatrix,n,m,iterations) RESULT(eigens)
+implicit none
 integer,intent(in)::n,m
 integer,intent(in),optional::iterations
 real, dimension(n,m), intent(in)::inMatrix
@@ -464,7 +472,7 @@ real, dimension(m)::eigens
 if(present(iterations)) then
     actIters=iterations
 else
-    actIters = 1000
+    actIters = 100000
 end if
 eigenMatrix=inMatrix !assign copy.   
 !now the actual algorithm implementation
@@ -479,14 +487,45 @@ do i=1,m,1
 end do
 end function eigenvals
 
-
-
 !Add a sorting algorithm of some variety for the eigenvalues
 !also make Span(), Rank()
 !!Subroutine for SVD
 subroutine SVD(inMatrix, n, m)
+implicit none
 integer::n,m
 real, dimension(n,m)::inMatrix
-
 end subroutine 
+
+!!!sign function: Return 1 if positive or 0 val, return -1 if negative.
+function sgn(val) RESULT(retVal)
+implicit none
+real::val,retVal
+if (val.ge.0.0) then 
+    retVal=1.0
+else 
+    retVal=-1.0
+end if
+end function sgn
+
+!Create function for the outer Product of two vectors; useful in Hesseberg stuff.  
+function outerProduct(v1,v2) RESULT(outMatrix)
+implicit none
+integer::vecLen1,vecLen2
+real, intent(in)::v1(:) !NOTE: This is how you make the function automatically allocate variable inputs
+real, intent(in)::v2(:)
+real, dimension(:,:),allocatable::outMatrix,v2T
+vecLen1 = size(v1)
+vecLen2 = size(v2)
+!Get sizes of the two vectors.  
+!Allocate memory to fit the given sizes.  !Both are represented as columns with form (:,1), with form (1,:).  Pass both as columns and then transpose. 
+allocate(outMatrix(vecLen1,vecLen2))!Allocates for the outmatrix
+allocate(v2T(1,vecLen2))
+v2T = reshape(v2, shape=[1,vecLen2])!Performs a transpose.  
+!now perform the multiplication
+call printMatrix(v1,vecLen1,1)
+call printMatrix(v2T,1,vecLen2)
+
+
+end function outerProduct
+
 end program matrixOperations
