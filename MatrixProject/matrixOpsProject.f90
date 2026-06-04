@@ -81,6 +81,7 @@ eigs = eigenvals(mymatrix,n,m)
 call printMatrix(eigs,1,m)
 !reye = eye(n,m)
 
+
 !!First vector of the matrix
 vec = mymatrix(1,:)
 normal = Norm(vec)
@@ -91,7 +92,7 @@ vec3 = myMatrix(:,2)
 outerprod = outerProduct(vec2,vec3)
 
 !!Test Hessenberg Reduction Function here: 
-retMat2 = Hessenberg(mymatrix)
+retMat2 = eigs2(mymatrix)
 
 !call printMatrix(mymatrix,n,m)
 close(20)
@@ -159,6 +160,66 @@ else
     end if
 end if
 end subroutine givens
+
+!Function for rounding values.  
+function roundSmalls(inMatrix,precision) RESULT(outMatrix)
+implicit none
+real, intent(in),optional::precision
+real, intent(in)::inMatrix(:,:)
+integer::n,m,i,j
+real::actPrecision
+real, dimension(:,:),allocatable::outMatrix
+!Check first if precison before allocating.  Autoset value if not.  
+if(present(precision)) then
+    actPrecision=precision
+else
+    actPrecision = 0.00001 !aka 1e-5
+end if
+!!Get size and allocate output as that value.  
+n = size(inMatrix,dim=1) !#rows
+m = size(inMatrix,dim=2) !#cols
+allocate(outMatrix(n,m))
+outMatrix = inMatrix !Make sure the two are equal to start.  
+!Check firs
+!!Now comb through and find the small values.  Take abs(val @ i,j) and then see if its greater than or less than the current one.  If less, round to zero.
+do i=1,n,1
+    do j=1,m,1
+        !Check if absolute value (positive or negative is less than precision.  if so, round it)
+        if (abs(outMatrix(i,j))<actPrecision) then 
+            outMatrix(i,j) = 0.0
+        else 
+            continue
+        end if
+    end do 
+end do
+end function roundSmalls
+
+!Eye function equiv.  
+function eye(n,m,rightShift,downShift) RESULT(eyeMatrix)
+implicit none
+integer, intent(in)::n,m
+integer, intent(in), optional::rightShift,downShift
+integer::actRightShift,actDownShift,j
+real,dimension(n,m)::eyeMatrix
+eyeMatrix=0
+if (present(rightShift)) then
+    actRightShift=rightShift
+else
+    actRightShift=0
+end if
+if (present(downShift)) then 
+    actDownShift=downShift
+else
+    actDownShift=0
+end if
+i=1+actDownShift
+do j=1+actRightShift,m,1
+    eyeMatrix(i,j)=1.0
+    i=i+1
+end do
+end function
+
+!END Simple operations.  
 
 !!!MATRIX OPERATIONS BEGIN HERE:  
 
@@ -472,33 +533,8 @@ end subroutine QR !Must be subroutine to return both Q and R.
 !! Pseudo-Inverse() should return the pseudo-inverse of a given matrix.  Any size.  Function should work.  
 !! Method: Graham Schmidt for QR Decomposition
 
-!!!Eigenvalues and shittt.  
 !!For storing the values of the eigenstuff
 !Eye function analog to numpy.eye
-function eye(n,m,rightShift,downShift) RESULT(eyeMatrix)
-implicit none
-integer, intent(in)::n,m
-integer, intent(in), optional::rightShift,downShift
-integer::actRightShift,actDownShift,j
-real,dimension(n,m)::eyeMatrix
-eyeMatrix=0
-if (present(rightShift)) then
-    actRightShift=rightShift
-else
-    actRightShift=0
-end if
-if (present(downShift)) then 
-    actDownShift=downShift
-else
-    actDownShift=0
-end if
-i=1+actDownShift
-do j=1+actRightShift,m,1
-    eyeMatrix(i,j)=1.0
-    i=i+1
-end do
-!call printMatrix(eyeMatrix,n,m)
-end function
 
 !Take the eigen QR of a matrix
 function eigenvals(inMatrix,n,m,iterations) RESULT(eigens)
@@ -537,7 +573,6 @@ implicit none
 integer::n,m
 real, dimension(n,m)::inMatrix
 end subroutine 
-
 
 !Create function for the outer Product of two vectors; useful in Hesseberg stuff.  
 function outerProduct(v1,v2) RESULT(outMatrix)
@@ -613,9 +648,54 @@ do i=1,m-2,1
     outMatrix(i+1:m,i:m)=outMatrix(i+1:m,i:m) - 2.0*outerProduct(v,matmul(v,outMatrix(i+1:m,i:m)))
     outMatrix(1:m,i+1:m)=outMatrix(1:m,i+1:m) - 2.0*outerProduct(matmul(outMatrix(1:m,i+1:m),v),v)
 end do
+outMatrix = roundSmalls(outMatrix)
+!call printMatrix(outMatrix,n,m)
 end function hessenberg
 
+!Updated eigenvalues function with Hessenberg Reduction and Schur stuff.  
+function eigs2(inMatrix, iterations) RESULT(eigenMatrix)
+implicit none
+real, intent(in)::inMatrix(:,:)
+integer, intent(in), optional::iterations
+integer::n,m,actIters,i
+real::s
+real, dimension(:),allocatable::eigens
+real, dimension(:,:),allocatable::eigenMatrix,shift, Q, R
+!Check if iterations input is present, if not, default to 1000.  
+if (present(iterations)) then 
+    actIters = iterations
+else
+    actIters = 100
+end if
+n = size(inMatrix,dim=1) !#rows
+m = size(inMatrix,dim=2) !#cols
+!Allocate the vars
 
+allocate(eigens(m))
+allocate(eigenMatrix(n,m))
+allocate(shift(n,m))
+allocate(R(n,m))
+allocate(Q(m,m))
+
+!!!CREATE CONDITION CHECK FOR MATRIX SIZE, CHOOSE WISELY.
+!!convert to upper hessenberg form.
+eigenMatrix = inMatrix  
+eigenMatrix = Hessenberg(eigenMatrix)
+!shift=eye(n,n)
+!call printMatrix(shift*eigenMatrix(n,n),n,n)
+!call printMatrix(eigenMatrix, n,m)
+!!Now do the algorithm.  Should be more accurate and converge quicker.  
+do i=1,actIters,1
+    !s is iterative shift
+    s = eigenMatrix(n,n)
+    shift = s*eye(n,n)
+    !call printMatrix(shift,n,n)
+    call QR(eigenMatrix-shift,n,m,Q,R) !assigns both Q and R
+
+    eigenMatrix = matmul(R,Q)+shift !Check if there's one for matrix addition.  SHIFTS AREN'T ADDING UP.  
+end do
+call printMatrix(eigenMatrix,n,m)
+end function eigs2
 
 
 
