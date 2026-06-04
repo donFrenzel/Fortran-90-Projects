@@ -4,7 +4,7 @@ implicit none
 !! Should determine Reduced Row Echelon Form using a radix sort of values
 !! NOTE: MAKE SURE THAT THE FILE IS WRITTEN IN ORDER: FIRST ROW->NthRow n=noRows, m = noCols
 integer::n,m,i,j,retty !Assigns values of row length and column height
-real,dimension(:,:),allocatable::mymatrix,returnMatrix,inv,Q,R,reye,outerprod
+real,dimension(:,:),allocatable::mymatrix,returnMatrix,inv,Q,R,reye,outerprod,retMat2
 real,dimension(:),allocatable::vec,eigs,vec2,vec3
 real::determinant,normal
 
@@ -21,6 +21,7 @@ allocate(eigs(m))
 allocate(vec2(n))
 allocate(vec3(n))
 allocate(outerProd(m,n))
+allocate(retMat2(n,m))
 
 !remember that n = nRows, m = nCols
 !! Insert file values into the matrix from input 10.
@@ -82,12 +83,15 @@ call printMatrix(eigs,1,m)
 
 !!First vector of the matrix
 vec = mymatrix(1,:)
-normal = Norm(vec,m)
+normal = Norm(vec)
 write(*,*)'Normal of the first vector:',normal
 
 vec2 = mymatrix(:,1)
 vec3 = myMatrix(:,2)
 outerprod = outerProduct(vec2,vec3)
+
+!!Test Hessenberg Reduction Function here: 
+retMat2 = Hessenberg(mymatrix)
 
 !call printMatrix(mymatrix,n,m)
 close(20)
@@ -108,10 +112,11 @@ return
 end subroutine printMatrix
 
 !!Function Takes the Norm
-real function Norm(vector,n) RESULT(vectNormal)
+real function Norm(vector) RESULT(vectNormal)
 integer::n,i
-real, dimension(n)::vector
+real, intent(in)::vector(:)
 real::sum
+n = size(vector)
 sum=0.0
 !Take square root of the squared sum.  
 do i=1,n,1
@@ -171,7 +176,7 @@ end do
 !take the norm of ANY of the rows; if zero then set zero flag.  Assign g to all row ind
 do i=1,n,1
     selectedRow = retMatrix(i,:)
-    normal = Norm(selectedRow, m)
+    normal = Norm(selectedRow)
     if (normal==0) then
         g=i-1 !g is the index of the row where the first zero row is.  It sets g=i-1. 
         zeroFlag=1
@@ -422,7 +427,7 @@ do j=1,m,1
         R(i,j)=dot_product(Q(:,i),matrix(:,j))
         v = v-R(i,j)*Q(:,i)
     end do
-    R(j,j) = Norm(v,n)
+    R(j,j) = Norm(v)
     Q(:,j) = v/(R(j,j))
 end do
 end subroutine QR !Must be subroutine to return both Q and R.  
@@ -542,21 +547,35 @@ do i=1,m1Rows,1
 end do
 end function kroneckerProduct
 
+!Hessenberg now works as intended.  
 function hessenberg(inMatrix) RESULT(outMatrix)
 real, intent(in)::inMatrix(:,:)
 real, dimension(:,:),allocatable::outMatrix
-real, dimension(:),allocatable::x
-integer::n,m,i,j
+real, dimension(:),allocatable::e1,v,x
+integer::n,m,i
 n = size(inMatrix,dim=1) !#rows
 m = size(inMatrix,dim=2) !#cols
 allocate(outMatrix(n,m))
 allocate(x(m))
+allocate(v(m))
+outMatrix = inMatrix !assign in matrix to out matrix.  
 !Now translate the python code to do Hessenberg reduction.  
 do i=1,m-2,1
-    x = inMatrix(i+1:m,i)
-    !Continue from here.  
+    !Check if already preallocated
+    if (allocated(e1)) then 
+        deallocate(e1)
+    end if
+    x = outMatrix(i+1:m,i) !x is supposed to be a column vector.  !WORKS
+    allocate(e1(size(x)),source=0.0) !Allocate and fill e1 to mimic size of x. 
+    e1(1)=1.0 !error here, calling 0 index when should be 1.
+    v=sgn(x(0))*Norm(x)*e1+x
+    v=v/Norm(v)
+    !These two are signaling segmentation fault.  
+    !first one has to start at second array position while the 
+    !write(*,*)matmul(reshape(v,[1,size(v)]),outMatrix(i+1:m,i:m))!this works to flatten into 1D array as req'd by outer product
+    outMatrix(i+1:m,i:m)=outMatrix(i+1:m,i:m) - 2.0*outerProduct(v,matmul(v,outMatrix(i+1:m,i:m)))
+    outMatrix(1:m,i+1:m)=outMatrix(1:m,i+1:m) - 2.0*outerProduct(matmul(outMatrix(1:m,i+1:m),v),v)
 end do
-
 end function hessenberg
 
 !!!sign function: Return 1 if positive or 0 val, return -1 if negative.
