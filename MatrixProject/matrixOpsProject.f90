@@ -99,6 +99,8 @@ deallocate(mymatrix)
 stop
 !primary program is done!
 contains 
+
+!!!BASIC FUNCTIONS INCLUDE printMatrix, norm, and custom sign function.  
 !Define print matrix subroutine; inputs are the matrix and number of rows.  Rets matrix as-is.  
 subroutine printMatrix(matrix,n,m)
 implicit none
@@ -124,6 +126,41 @@ do i=1,n,1
 end do 
 vectNormal = sqrt(sum)
 end function Norm
+
+!!!sign function: Return 1 if positive or 0 val, return -1 if negative.
+function sgn(val) RESULT(retVal)
+implicit none
+real::val,retVal
+if (val.ge.0.0) then 
+    retVal=1.0
+else 
+    retVal=-1.0
+end if
+end function sgn
+
+!Create a givens function here, 'returns' modified values of c and s, they are necessary as inputs.  
+subroutine givens(a,b,c,s)
+implicit none
+real, intent(in)::a,b
+real, intent(out)::c,s 
+real::t
+if (b==0.0) then 
+    c=1.0
+    s=0.0
+else
+    if(abs(b)>abs(a)) then 
+        t=-a/b
+        s=1/sqrt(1+t**2)
+        c=s*t
+    else
+        t=-b/a
+        c=1/sqrt(1+t**2)
+        s=c*t
+    end if
+end if
+end subroutine givens
+
+!!!MATRIX OPERATIONS BEGIN HERE:  
 
 !!!Create GJ Subroutine here:
 function GaussJordan(matrix,n,m) RESULT(retMatrix)
@@ -578,15 +615,8 @@ do i=1,m-2,1
 end do
 end function hessenberg
 
-!!!sign function: Return 1 if positive or 0 val, return -1 if negative.
-function sgn(val) RESULT(retVal)
-implicit none
-real::val,retVal
-if (val.ge.0.0) then 
-    retVal=1.0
-else 
-    retVal=-1.0
-end if
-end function sgn
+
+
+
 
 end program matrixOperations
