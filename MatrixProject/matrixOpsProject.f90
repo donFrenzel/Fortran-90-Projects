@@ -251,7 +251,6 @@ end do
 end function simpleSort
 
 !END Simple operations.  
-
 !!!MATRIX OPERATIONS BEGIN HERE:  
 
 !!!Create GJ Subroutine here:
@@ -693,7 +692,6 @@ end do
 !then sort them.  
 eigens = simpleSort(eigens)
 end function eigenvals
-
 !! Pseudo-Inverse() should return the pseudo-inverse of a given matrix.  Any size.  Function should work.  
 
 !also make Span(), Rank()
