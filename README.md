@@ -7,4 +7,4 @@ The primary project here is the filed named binaryconverter.f90, which converts 
 
 This will be updated soon with a matrix calculator that takes a txt file as an input and performs a number of common matrix operations on them since FORTRAN 90 is specifically designed to handle vectors and matrices.  
 
-This currently works with the gfortran compiler.
+This currently works with the gfortran compiler.  You will need it or an equivalent to run any of the programs featured here.  
