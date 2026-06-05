@@ -76,11 +76,6 @@ retty = linearIndependence(mymatrix,n,m)
 !call printMatrix(Q,m,m)
 !call printMatrix(R,n,m)
 
-write(*,*)'The Eigenvalues of the Matrix are:'
-eigs = eigenvals(mymatrix,n,m)
-call printMatrix(eigs,1,m)
-!reye = eye(n,m)
-
 
 !!First vector of the matrix
 vec = mymatrix(1,:)
@@ -92,7 +87,9 @@ vec3 = myMatrix(:,2)
 outerprod = outerProduct(vec2,vec3)
 
 !!Test Hessenberg Reduction Function here: 
-retMat2 = eigs2(mymatrix)
+retMat2 = eigenvals(mymatrix)
+write(*,*)'The Eigenvalues of the Matrix are:'
+
 
 !call printMatrix(mymatrix,n,m)
 close(20)
@@ -194,7 +191,7 @@ do i=1,n,1
 end do
 end function roundSmalls
 
-!Eye function equiv.  
+!Eye function analog to numpy.eye
 function eye(n,m,rightShift,downShift) RESULT(eyeMatrix)
 implicit none
 integer, intent(in)::n,m
@@ -534,36 +531,6 @@ end subroutine QR !Must be subroutine to return both Q and R.
 !! Method: Graham Schmidt for QR Decomposition
 
 !!For storing the values of the eigenstuff
-!Eye function analog to numpy.eye
-
-!Take the eigen QR of a matrix
-function eigenvals(inMatrix,n,m,iterations) RESULT(eigens)
-implicit none
-integer,intent(in)::n,m
-integer,intent(in),optional::iterations
-real, dimension(n,m), intent(in)::inMatrix
-integer::i,actIters
-real, dimension(n,m)::eigenMatrix,R
-real, dimension(m,m)::Q
-real, dimension(m)::eigens
-!!!Check input options to make sure that they're properly there.  
-if(present(iterations)) then
-    actIters=iterations
-else
-    actIters = 100000
-end if
-eigenMatrix=inMatrix !assign copy.   
-!now the actual algorithm implementation
-do i=1,actIters,1
-    !these two work well enough with 1000 iters for 3x3, 4x4 as well.  Tolerance very good.  
-    call QR(eigenMatrix,n,m,Q,R)
-    eigenMatrix= matmul(R,Q)
-end do
-!Isolate eigenvalues from main diagonal.  CURRENTLY UNSORTED
-do i=1,m,1
-    eigens(i)=eigenMatrix(i,i)
-end do
-end function eigenvals
 
 !Add a sorting algorithm of some variety for the eigenvalues
 !also make Span(), Rank()
@@ -653,7 +620,7 @@ outMatrix = roundSmalls(outMatrix)
 end function hessenberg
 
 !Updated eigenvalues function with Hessenberg Reduction and Schur stuff.  
-function eigs2(inMatrix, iterations) RESULT(eigenMatrix)
+function eigenvals(inMatrix, iterations) RESULT(eigenMatrix)
 implicit none
 real, intent(in)::inMatrix(:,:)
 integer, intent(in), optional::iterations
@@ -678,25 +645,33 @@ allocate(R(n,m))
 allocate(Q(m,m))
 
 !!!CREATE CONDITION CHECK FOR MATRIX SIZE, CHOOSE WISELY.
+!if matrix size is less than 4 go with reg qr algorithm, else go with the shifted version.  Use Hessenberg for both regardless.  
 !!convert to upper hessenberg form.
 eigenMatrix = inMatrix  
 eigenMatrix = Hessenberg(eigenMatrix)
-!shift=eye(n,n)
-!call printMatrix(shift*eigenMatrix(n,n),n,n)
-!call printMatrix(eigenMatrix, n,m)
+if (n<4) then 
+    !Add previous code here. 
+    do i=1,actIters,1
+    !these two work well enough with 1000 iters for 3x3, 4x4 as well.  Tolerance very good.  
+    call QR(eigenMatrix,n,m,Q,R)
+    eigenMatrix= matmul(R,Q)
+    end do 
+else
 !!Now do the algorithm.  Should be more accurate and converge quicker.  
-do i=1,actIters,1
-    !s is iterative shift
-    s = eigenMatrix(n,n)
-    shift = s*eye(n,n)
-    !call printMatrix(shift,n,n)
-    call QR(eigenMatrix-shift,n,m,Q,R) !assigns both Q and R
+    do i=1,actIters,1
+        !s is iterative shift
+        s = eigenMatrix(n,n)
+        shift = s*eye(n,n)
+        !call printMatrix(shift,n,n)
+        call QR(eigenMatrix-shift,n,m,Q,R) !assigns both Q and R
 
-    eigenMatrix = matmul(R,Q)+shift !Check if there's one for matrix addition.  SHIFTS AREN'T ADDING UP.  
-end do
+        eigenMatrix = matmul(R,Q)+shift !Check if there's one for matrix addition.  SHIFTS AREN'T ADDING UP.  
+    end do
+end if 
 call printMatrix(eigenMatrix,n,m)
-end function eigs2
 
+!Now isolate and sort the eigenvals.  
+end function eigenvals
 
 
 end program matrixOperations
