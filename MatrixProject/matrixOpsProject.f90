@@ -695,11 +695,7 @@ eigens = simpleSort(eigens)
 end function eigenvals
 
 !! Pseudo-Inverse() should return the pseudo-inverse of a given matrix.  Any size.  Function should work.  
-!! Method: Graham Schmidt for QR Decomposition
 
-!!For storing the values of the eigenstuff
-
-!Add a sorting algorithm of some variety for the eigenvalues
 !also make Span(), Rank()
 !!Subroutine for SVD
 subroutine SVD(inMatrix, n, m)
