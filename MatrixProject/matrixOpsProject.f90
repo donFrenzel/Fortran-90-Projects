@@ -25,7 +25,7 @@ allocate(retMat2(n,m))
 
 !remember that n = nRows, m = nCols
 !! Insert file values into the matrix from input 10.
-open(20,file='matrix2.txt', status='old')
+open(20,file='matrix.txt', status='old')
 !! Create file-read method for this.  Basically just from one input to another, or allow multi-input?  File works better I think.  
 do i=1,n,1
     do j=1,m,1
@@ -87,9 +87,9 @@ vec3 = myMatrix(:,2)
 outerprod = outerProduct(vec2,vec3)
 
 !!Test Hessenberg Reduction Function here: 
-retMat2 = eigenvals(mymatrix)
+eigs = eigenvals(mymatrix)
 write(*,*)'The Eigenvalues of the Matrix are:'
-
+write(*,*)eigs
 
 !call printMatrix(mymatrix,n,m)
 close(20)
@@ -215,6 +215,40 @@ do j=1+actRightShift,m,1
     i=i+1
 end do
 end function
+
+!Simple sorting algorithm (roughly O(n))
+function simpleSort(array) RESULT(outArray)
+implicit none
+real, intent(in)::array(:)
+real, dimension(:), allocatable::curArray,outArray, temp
+integer::i,n,l
+integer,dimension(1)::mloc
+real::max
+n = size(array)
+allocate(outArray(n))
+allocate(curArray(n))
+curArray = array
+do i=1,n,1
+    mloc = maxloc(curArray) !max location
+    max = curArray(mloc(1)) !max val
+    l = size(curArray)
+    !allocate temp if unallocated, else deallocate. (Will always be allocated.  )
+    if (allocated(temp)) then 
+        deallocate(temp)
+    end if
+    allocate(temp(l-1))
+    !Use slicing here.  
+    temp = (/curArray(1:mloc(1)-1), curArray(mloc(1)+1:l)/)
+    !Reallocate current, modifiable array to be 1 smaller so that the size fits.  
+    if(allocated(curArray)) then 
+        deallocate(curArray)
+    end if
+    allocate(curArray(l-1))
+    !Assign newly allocated array the values of temp (which has now excluded the old max)
+    curArray = temp
+    outArray(i)=max
+end do
+end function simpleSort
 
 !END Simple operations.  
 
@@ -462,8 +496,6 @@ UMatrix = iMatrix
 invMat = matmul(UMatrix,LMatrix)
 end function inverse
 
-
-
 !Linear Independence Checker 
 integer function linearIndependence(matrix,n,m) RESULT(output)
 integer::n,m,i,j,zeroFlag,countPivots
@@ -526,20 +558,6 @@ do j=1,m,1
     Q(:,j) = v/(R(j,j))
 end do
 end subroutine QR !Must be subroutine to return both Q and R.  
-
-!! Pseudo-Inverse() should return the pseudo-inverse of a given matrix.  Any size.  Function should work.  
-!! Method: Graham Schmidt for QR Decomposition
-
-!!For storing the values of the eigenstuff
-
-!Add a sorting algorithm of some variety for the eigenvalues
-!also make Span(), Rank()
-!!Subroutine for SVD
-subroutine SVD(inMatrix, n, m)
-implicit none
-integer::n,m
-real, dimension(n,m)::inMatrix
-end subroutine 
 
 !Create function for the outer Product of two vectors; useful in Hesseberg stuff.  
 function outerProduct(v1,v2) RESULT(outMatrix)
@@ -620,7 +638,7 @@ outMatrix = roundSmalls(outMatrix)
 end function hessenberg
 
 !Updated eigenvalues function with Hessenberg Reduction and Schur stuff.  
-function eigenvals(inMatrix, iterations) RESULT(eigenMatrix)
+function eigenvals(inMatrix, iterations) RESULT(eigens)
 implicit none
 real, intent(in)::inMatrix(:,:)
 integer, intent(in), optional::iterations
@@ -637,19 +655,17 @@ end if
 n = size(inMatrix,dim=1) !#rows
 m = size(inMatrix,dim=2) !#cols
 !Allocate the vars
-
 allocate(eigens(m))
 allocate(eigenMatrix(n,m))
 allocate(shift(n,m))
 allocate(R(n,m))
 allocate(Q(m,m))
-
 !!!CREATE CONDITION CHECK FOR MATRIX SIZE, CHOOSE WISELY.
 !if matrix size is less than 4 go with reg qr algorithm, else go with the shifted version.  Use Hessenberg for both regardless.  
 !!convert to upper hessenberg form.
 eigenMatrix = inMatrix  
 eigenMatrix = Hessenberg(eigenMatrix)
-if (n<4) then 
+if (n<5) then 
     !Add previous code here. 
     do i=1,actIters,1
     !these two work well enough with 1000 iters for 3x3, 4x4 as well.  Tolerance very good.  
@@ -668,10 +684,28 @@ else
         eigenMatrix = matmul(R,Q)+shift !Check if there's one for matrix addition.  SHIFTS AREN'T ADDING UP.  
     end do
 end if 
-call printMatrix(eigenMatrix,n,m)
-
 !Now isolate and sort the eigenvals.  
+!Eigenvals are going to lie along the diagonal, so grab them like before.  
+!use array eigens.  
+do i=1,n,1
+    eigens(i)=eigenMatrix(i,i)
+end do
+!then sort them.  
+eigens = simpleSort(eigens)
 end function eigenvals
 
+!! Pseudo-Inverse() should return the pseudo-inverse of a given matrix.  Any size.  Function should work.  
+!! Method: Graham Schmidt for QR Decomposition
+
+!!For storing the values of the eigenstuff
+
+!Add a sorting algorithm of some variety for the eigenvalues
+!also make Span(), Rank()
+!!Subroutine for SVD
+subroutine SVD(inMatrix, n, m)
+implicit none
+integer::n,m
+real, dimension(n,m)::inMatrix
+end subroutine 
 
 end program matrixOperations
