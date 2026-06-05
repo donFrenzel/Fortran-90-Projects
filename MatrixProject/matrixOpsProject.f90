@@ -4,7 +4,7 @@ implicit none
 !! Should determine Reduced Row Echelon Form using a radix sort of values
 !! NOTE: MAKE SURE THAT THE FILE IS WRITTEN IN ORDER: FIRST ROW->NthRow n=noRows, m = noCols
 integer::n,m,i,j,retty !Assigns values of row length and column height
-real,dimension(:,:),allocatable::mymatrix,returnMatrix,inv,Q,R,reye,outerprod,retMat2
+real,dimension(:,:),allocatable::mymatrix,returnMatrix,inv,Q,R,reye,outerprod,retMat2, U, S, VT
 real,dimension(:),allocatable::vec,eigs,vec2,vec3
 real::determinant,normal
 
@@ -22,6 +22,10 @@ allocate(vec2(n))
 allocate(vec3(n))
 allocate(outerProd(m,n))
 allocate(retMat2(n,m))
+
+allocate(U(m,m))
+allocate(S(m,n))
+allocate(VT(n,n))
 
 !remember that n = nRows, m = nCols
 !! Insert file values into the matrix from input 10.
@@ -90,6 +94,8 @@ outerprod = outerProduct(vec2,vec3)
 eigs = eigenvals(mymatrix)
 write(*,*)'The Eigenvalues of the Matrix are:'
 write(*,*)eigs
+
+call SVD(myMatrix,U,S,VT)
 
 !call printMatrix(mymatrix,n,m)
 close(20)
@@ -695,11 +701,37 @@ end function eigenvals
 !! Pseudo-Inverse() should return the pseudo-inverse of a given matrix.  Any size.  Function should work.  
 
 !also make Span(), Rank()
-!!Subroutine for SVD
-subroutine SVD(inMatrix, n, m)
+!!Subroutine for SVD USE JACOBI
+subroutine SVD(inMatrix,U,S,VT) 
 implicit none
-integer::n,m
-real, dimension(n,m)::inMatrix
+real, intent(in)::inMatrix(:,:)
+integer::n,m, count, sweep, sweepMax, i, j
+real::DBLeps, tol
+real, intent(out), dimension(:,:)::U,S,VT
+real,dimension(:,:), allocatable::A,Q
+real,dimension(:), allocatable::t
+n = size(inMatrix,dim=1) !#rows
+m = size(inMatrix,dim=2) !#cols
+allocate(A(n,m)) !copy of inMatrix
+allocate(Q(m,m)) !copy V
+allocate(t(m), source=0.0) !copy S 
+DBLeps = 1.0e-15
+A = inMatrix
+Q = eye(m,m)
+call printMatrix(Q,m,m)
+!counters & setup
+count=1
+sweep=0
+sweepMax = max(5*m,12)
+tol = 10*m*DBLeps
+
+!fill column vector values
+do j=1,m,1
+    t(j) = Norm(A(:,j)) !t should be a collection of the norms of all of the column vectors.  
+end do
+
+!continue from here. 
+
 end subroutine 
 
 end program matrixOperations
