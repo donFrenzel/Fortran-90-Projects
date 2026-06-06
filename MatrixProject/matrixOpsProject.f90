@@ -718,7 +718,6 @@ allocate(t(m), source=0.0) !copy S
 DBLeps = 1.0e-15
 A = inMatrix
 Q = eye(m,m)
-call printMatrix(Q,m,m)
 !counters & setup
 count=1
 sweep=0
@@ -730,8 +729,13 @@ do j=1,m,1
     t(j) = Norm(A(:,j)) !t should be a collection of the norms of all of the column vectors.  
 end do
 
-!continue from here. 
+!continue from here. try to use more .gt. type ones as this looks cooler.  
+do while((count.gt.0.0).AND.(sweep.le.sweepMax))
+    !code goes in here
+end do
 
 end subroutine 
+!Truncated SVD might be more interesting to look into.  
+
 
 end program matrixOperations
