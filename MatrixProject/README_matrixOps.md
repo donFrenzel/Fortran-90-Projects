@@ -13,7 +13,7 @@
 - Eigenvalues (QR Algorithm & QR with shifts)
 
 *Matrix Subroutines:*
-- LU Decomposition (It's there but it's rudimentary - still needs implementation on its own)
+- LU Decomposition (It's there but it's rudimentary - still needs implementation on its own as a subroutine)
 - QR Decomposition
 - SVD (soon to come)
 
