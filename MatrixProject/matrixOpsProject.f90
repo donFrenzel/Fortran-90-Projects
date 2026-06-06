@@ -659,7 +659,7 @@ else
 end if
 n = size(inMatrix,dim=1) !#rows
 m = size(inMatrix,dim=2) !#cols
-!Allocate the vars
+!Allocate the vars 
 allocate(eigens(m))
 allocate(eigenMatrix(n,m))
 allocate(shift(n,m))
@@ -737,5 +737,7 @@ end do
 end subroutine 
 !Truncated SVD might be more interesting to look into.  
 
+
+!!Might also be good to do alternate *forward solving* version using other website.  
 
 end program matrixOperations
