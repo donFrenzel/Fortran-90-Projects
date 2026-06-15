@@ -320,7 +320,7 @@ allocate(nextRow(m))
 pivotR=1
 nextPivotR=1
 outMatrix = inMatrix
-write(*,*)'This is now running!'
+!write(*,*)'This is now running!'
 !Step one, keep index of the pivot row.  Currently it is 1.
 do j=1,m,1
     !sends all zero rows to the bottom for every step. 
@@ -671,10 +671,11 @@ implicit none
 real, intent(in)::inMatrix(:,:)
 integer, intent(in), optional::iterations
 integer::n,m,actIters,i
-real::s
+real::s, tol
 real, dimension(:),allocatable::eigens
 real, dimension(:,:),allocatable::eigenMatrix,shift, Q, R
 !Check if iterations input is present, if not, default to 1000.  
+tol = 1.00e-5
 if (present(iterations)) then 
     actIters = iterations
 else
@@ -716,7 +717,11 @@ end if
 !Eigenvals are going to lie along the diagonal, so grab them like before.  
 !use array eigens.  
 do i=1,n,1
-    eigens(i)=eigenMatrix(i,i)
+    if (abs(eigenMatrix(i,i))<tol) then 
+        eigens(i)=0.0
+    else
+        eigens(i)=eigenMatrix(i,i)
+    end if
 end do
 !then sort them.  
 eigens = simpleSort(eigens)
@@ -908,6 +913,9 @@ singVals = sqrt(eigensAAT)
 !call printMatrix(eigensAAT,n,1) !for checking purposes.  
 !call printMatrix(singVals,n,1)
 !now that the eigens of AAT have been retrieved.  
+!eigensATA = eigenvals(ATA)
+!Try to round the values to the closest
+!write(*,*)'ATA Eigenvalues',eigensATA
 eigenvecs = eigenvectors(ATA,eigensAAT)
 end subroutine 
 
@@ -935,13 +943,13 @@ allocate(freeCols(m))
 
 !Now put this into a do loop where k=1,size(eigens),1
 do k=1,size(eigens),1
-    AR = inMatrix-eigens(2)*eye(n,m) !swap eigens in position i.
+    AR = inMatrix-eigens(k)*eye(n,m) !swap eigens in position i.
     !write(*,*)'This part of the code is running!'
+    !Here is where it can be functionalized.  
     AR = RREF(AR)
     A=A+AR
     A(:,m+1) = 0.0 !set the last col to zero.
     !keep track of the pivot column indices.  
-    call printMatrix(A,n,m+1)
     prevPivRow=0
     !Should only go across the existing matrix, last column not to be measured AT ALL.  
     do j=1,m,1
@@ -955,15 +963,14 @@ do k=1,size(eigens),1
                 A(i,m+1)=A(i,m+1)-curVal
                 A(i,j)=A(i,j)-curVal
             end if
-                !mark the column as 'free variable' and move to the far right (solution bracket) by subtracting that value. 
-            !and if the previous Pivot row is the same as i and the value is nonzero, then label it as a free variable and subtract to the left.  
-                !now assigns free variables.  
-                
-                !since j is now a column of free vals, we can just assign it to be equal to the first eigenvalue.  A character should be used for this.  
+        !mark the column as 'free variable' and move to the far right (solution bracket) by subtracting that value. 
+        !and if the previous Pivot row is the same as i and the value is nonzero, then label it as a free variable and subtract to the left.  
+        !now assigns free variables.  
+        !since j is now a column of free vals, we can just assign it to be equal to the first eigenvalue.  A character should be used for this.  
         end do
     end do
     !Now use eigenVector array
-    call printMatrix(A,n,m+1)
+    !call printMatrix(A,n,m+1)
     ticker=0
     do j=1,m,1
         if(all(A(:,j)==0.0)) then 
@@ -982,30 +989,77 @@ do k=1,size(eigens),1
             eigenVector(freeCols(j)) = 1.0
         end if
     end do
-    !call printMatrix(A,n,m+1)
-    !write(*,*)'The free columns are: ',freeCols
-    !write(*,*)'Prenormalized:',eigenVector
+    !write(*,*)eigenVector
+    !write(*,*)
     eigenVector = eigenVector/Norm(eigenVector) !normalize eigenvectors.  
     eigenMatrix(k,:) = eigenVector
+    A = 0.0 !reset A, otherwise residuals could cause all sorts of problems.  !oohhhh was only resetting the last one duh.  
+    eigenVector=0.0
 end do
 !write(*,*)'Normalized:',eigenVector
-!eigenvectors are now normalized.  
-AR = 0.0!set AR matrix to 0.0
-A = 0.0 !set A also equal to zero.  
+!eigenvectors are now normalized. 
+eigenMatrix(n,:)=0.0
+A=0.0!reset again
+A=A+eigenMatrix
+A(:,m+1)=0.0
+!solve le system of equations
+A = RREF(A)
+prevPivRow=0
+do j=1,m,1
+    do i=1,n,1
+        if (prevPivRow/=i.AND.A(i,j)==1.0) then 
+            !check and allocate then reallocate
+            !we know that i & j are the positions o
+            prevPivRow=prevPivRow+1
+        else
+            curVal=A(i,j)
+            A(i,m+1)=A(i,m+1)-curVal
+            A(i,j)=A(i,j)-curVal
+        end if       
+    end do
+end do
+freeCols=0
+ticker=0
+do j=1,m,1
+    if(all(A(:,j)==0.0)) then 
+        freeCols(ticker+1) = j !stores indices of free variables.  
+        ticker=ticker+1
+    else
+        !should be all 1's at this point assuming RREF
+        eigenVector(j) = A(j,m+1)
+    end if
+end do
+freeCols(ticker+1:m)=0.0
+do j=1,m,1
+    if(freeCols(j)/=0.0) then 
+        eigenVector(freeCols(j)) = 1.0
+    end if
+end do
+eigenVector = eigenVector/Norm(eigenVector)
+eigenMatrix(n,:) = eigenVector
+
+!!!Basically need to figure this part out depending on how many eigenvectors there are present within the whole thing.  
+
+!Flow is basically this: 
+!Input Matrix, Eigenvalues=> Eigenvectors determined with regular system->If there are less eigenvalues than the num of variables, follow
+!the same process to get them using previous solution->Output matrix of eigenvectors, which then are used for SVD.  
+
+!It might be prudent to incorporate the solution mechanism as its own function/subroutine.  Like maybe have it return the solution column for a 
+!matrix which might reduce otherwise.  maybe solve RREF?  BC Some RREF reduces to just a free one.  Maybe call the function 
+
+!function solveSystem(inMatrix) RESULT(solutions)
+!real,intent(in)::inMatrix(:,:)]
+!integer::n,m
+!real,dimension(:),allocatable::output
+!n = size(inMatrix,dim=1) !#rows
+!m = size(inMatrix,dim=2) !#cols
+
+!call printMatrix(A,n,m+1)
+eigenMatrix = transpose(eigenMatrix) !put into form where the eigenvectors are vertical column vectors.  
+
 !Now check if there are more eigenvectors than eigenvalues, if so, an extra step must be done to figure out the last one.  
-if (size(eigens).lt.m) then 
-    !if the size is less, we need to solve the equation for v3, as it must be perpendicular, appearing as the system of equations
-    !v1T*v3=0 & v2T*v3=0
-    !arrange it into a matrix?
-    !fill matrix with values. 
-    !need to figure out how to solve the equation to orthogonalize the last one.  
-    !use gram schmidt to do so.  
-    
-
-
-
-
-end if
+write(*,*)
+write(*,*)'Matrix of Eigenvectors (columns):'
 call printMatrix(eigenMatrix,n,m) !check for final printing.  !technically already transposed.  
 
 end function eigenVectors
