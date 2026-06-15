@@ -4,8 +4,8 @@ implicit none
 !! Should determine Reduced Row Echelon Form using a radix sort of values
 !! NOTE: MAKE SURE THAT THE FILE IS WRITTEN IN ORDER: FIRST ROW->NthRow n=noRows, m = noCols
 integer::n,m,i,j,retty !Assigns values of row length and column height
-real,dimension(:,:),allocatable::mymatrix,returnMatrix,inv,Q,R,reye,outerprod,retMat2, U, S, VT
-real,dimension(:),allocatable::vec,eigs,vec2,vec3
+real,dimension(:,:),allocatable::mymatrix,returnMatrix,inv,Q,R,reye,outerprod,retMat2, U, VT, S
+real,dimension(:),allocatable::vec,eigs,vec2,vec3,S1
 real::determinant,normal
 
 write(*,*)'Please input the n and m of your matrix.  FORMAT: Num Rows [ENTER] Num Cols [ENTER]' !Takes input and allocates values of the matrix to them.  
@@ -24,6 +24,7 @@ allocate(outerProd(m,n))
 allocate(retMat2(n,m))
 
 allocate(U(m,m))
+allocate(S1(m))
 allocate(S(m,n))
 allocate(VT(n,n))
 
@@ -59,7 +60,7 @@ call printMatrix(mymatrix,n,m)
 !call printMatrix(returnMatrix,n,m)
 !write(*,*)
 
-returnMatrix = RREF(mymatrix,n,m)
+returnMatrix = RREF(mymatrix) !switch this back
 write(*,*)'RREF of Matrix:'
 call printMatrix(returnMatrix,n,m)
 write(*,*)
@@ -91,11 +92,11 @@ vec3 = myMatrix(:,2)
 outerprod = outerProduct(vec2,vec3)
 
 !!Test Hessenberg Reduction Function here: 
-eigs = eigenvals(mymatrix)
-write(*,*)'The Eigenvalues of the Matrix are:'
-write(*,*)eigs
+!eigs = eigenvals(mymatrix)
+!write(*,*)'The Eigenvalues of the Matrix are:'
+!write(*,*)eigs
 
-call SVD(myMatrix,U,S,VT)
+!call SVD2(myMatrix,U,S,VT)
 
 !call printMatrix(mymatrix,n,m)
 close(20)
@@ -256,6 +257,25 @@ do i=1,n,1
 end do
 end function simpleSort
 
+function rowswap(inMatrix,rowInd1,rowInd2) RESULT(outMatrix)
+integer, intent(in)::rowInd1,rowInd2
+real, intent(in)::inMatrix(:,:)
+integer::n,m
+real, dimension(:,:),allocatable::outMatrix
+real, dimension(:),allocatable::row1, row2, temp
+n = size(inMatrix,dim=1) !#rows
+m = size(inMatrix,dim=2)
+allocate(outMatrix(n,m))
+allocate(row1(m))
+allocate(row2(m))
+allocate(temp(m))
+outMatrix = inMatrix
+row1 = outMatrix(rowInd1,:)
+row2 = outMatrix(rowInd2,:)
+outMatrix(rowInd2,:) = row1
+outMatrix(rowInd1,:) = row2
+end function rowswap
+
 !END Simple operations.  
 !!!MATRIX OPERATIONS BEGIN HERE:  
 
@@ -284,88 +304,91 @@ do i=1, m-1, 1
     end do
 end do
 end function GaussJordan
-
 !Remember, a subroutine returns the value in place.  Return var specified at the top. 
-function RREF(matrix, n, m) RESULT(retMatrix)
+function RREF(inMatrix) RESULT(outMatrix)
 implicit none
-integer::n,m,i,k,g,zeroFlag !g is the row index of the last value of the RREF
-real::currVal,nextVal,normal
-real,dimension(n,m)::matrix, retMatrix
-real,dimension(m)::selectedRow
-retMatrix = matrix !swaps returnMatrix for the original input
-zeroFlag=0
-do i=1, m-1, 1
-    currVal=retMatrix(i,i)
-    retMatrix(i,:)=retMatrix(i,:)/currVal !Reduces the row to it's leading 1 form.  
-    selectedRow = retMatrix(i,:)
-    !find succeeding values in the next row (needs a ceiling)
-    do k=i, n-1, 1
-        nextVal = retMatrix(k+1,i) 
-        !varRow = retMatrix(k+1,:)
-        retMatrix(k+1,:) = retMatrix(k+1,:)-(selectedRow*nextVal)
+real, intent(in)::inMatrix(:,:)
+integer::n,m,i,j,pivotR,nextPivotR
+real::pivotVal,curVal
+real, dimension(:,:), allocatable::outMatrix
+real, dimension(:), allocatable::curRow,nextRow
+n = size(inMatrix,dim=1) !#rows
+m = size(inMatrix,dim=2) !#cols
+allocate(outMatrix(n,m))
+allocate(curRow(m))
+allocate(nextRow(m))
+pivotR=1
+nextPivotR=1
+outMatrix = inMatrix
+write(*,*)'This is now running!'
+!Step one, keep index of the pivot row.  Currently it is 1.
+do j=1,m,1
+    !sends all zero rows to the bottom for every step. 
+    !first check if the matrix is empty, in which case it should return itself
+    if (sum(outMatrix)==0.0) then
+        exit
+    end if
+    !move all zero rows to the bottom per column iteration.  
+    do i=1,n-1,1
+        curRow = outMatrix(i,:)
+        nextRow = outMatrix(i+1,:)
+        if(sum(curRow)==0.0) then 
+            !send this to the bottom
+            if (sum(nextRow)/=0.0) then 
+                outMatrix(i,:) = outMatrix(i+1,:)
+                outMatrix(i+1,:) = curRow
+            end if
+        end if
     end do
+    !now that all zero rows are automatically sent to the bottom, find the first column which is a pivot.  
+    !current pivot position is 1, aka first position.  after finding the next pivot the two should swap. 
+    nextPivotR = 0
+    do i=pivotR,n,1
+        if(outMatrix(i,j)/=0.0) then 
+            !we know in this case that our current pivot is GOOD
+            nextPivotR=i
+            exit !exit the loop.  
+        end if 
+    end do
+    !cycle to next value in the loop if there are no valid pivots found.  
+    if (nextPivotR==0.0) then 
+        cycle
+    end if
+    !so now we have two pivot row indices, one for the current pivot (in this case 1) and another for the next one, currently next.  
+    !now, if nextPivotR.lt.pivotR then swap them.  
+    if (pivotR.lt.nextPivotR) then
+        curRow = outMatrix(nextPivotR,:)
+        outMatrix(nextPivotR,:) = outMatrix(pivotR,:)
+        outMatrix(pivotR,:) = curRow
+    end if
+    !now that we have the pivot row
+    pivotVal = outMatrix(pivotR,j)
+    !normalize the pivot row to the pivot value.  
+    outMatrix(pivotR,:)=outMatrix(pivotR,:)/pivotVal !should normalize it. 
+    !go to all rows below the pivot and reduce them by the pivot value.  
+    do i=1,n,1
+        if (i/=pivotR) then
+            curVal=outMatrix(i,j) 
+            outMatrix(i,:) = outMatrix(i,:)-(outMatrix(pivotR,:)*curVal)
+        end if
+    end do
+    !so far so good.  
+    pivotR = pivotR+1 !increase by 1 at the end, always.  
+    if (pivotR>n) then
+        exit
+    end if
 end do
-!!Gauss Jordan portion is done.  Now bascially loop backwards in an upper triangular manner and when doing so, grab the values appropriately
-!!of the scalars necessary to zero them out and then 
-!take the norm of ANY of the rows; if zero then set zero flag.  Assign g to all row ind
+!Now gets rref.  Correct -0 values 
 do i=1,n,1
-    selectedRow = retMatrix(i,:)
-    normal = Norm(selectedRow)
-    if (normal==0) then
-        g=i-1 !g is the index of the row where the first zero row is.  It sets g=i-1. 
-        zeroFlag=1
-    end if
-end do
-
-!Problem is here.  
-!Check to see if a zero row has been detected before proceeding.  
-if(zeroFlag==1) then
-    do k=g-1, 1, -1
-        do i=k-1, 1, -1
-            !write(*,*)retMatrix(i,k)
-            selectedRow=retMatrix(k,:)
-            nextVal = retMatrix(i,k)
-            retMatrix(i,:)=retMatrix(i,:)-(selectedRow*nextVal)
-        end do
-    end do
-
-!add new small loop if the matrix is square to clean up final column values
-    if (n==m) then
-        retMatrix(g,:)=retMatrix(g,:)/retMatrix(g,g) !sets it to 1 if 1
-        selectedRow = retMatrix(g,:)
-        do i=g-1,1,-1
-            nextVal = retMatrix(i,g)
-            retMatrix(i,:)=retMatrix(i,:)-(selectedRow*nextVal)
-        end do
-    end if
-else
-    do k=m-1, 1, -1
-        do i=k-1, 1, -1
-        !write(*,*)retMatrix(i,k)
-            selectedRow=retMatrix(k,:)
-            nextVal = retMatrix(i,k)
-            retMatrix(i,:)=retMatrix(i,:)-(selectedRow*nextVal)
-        end do
-    end do
-    if (n==m) then
-        retMatrix(n,:)=retMatrix(n,:)/retMatrix(n,n) !sets it to 1 if 1
-        selectedRow = retMatrix(n,:)
-        do i=n-1,1,-1
-            nextVal = retMatrix(i,n)
-            retMatrix(i,:)=retMatrix(i,:)-(selectedRow*nextVal)
-        end do
-    end if
-end if
-!Clean up negative zero values; could be a problem later on.  s
-do i=1, n, 1
-    do k=1, m ,1
-        if (abs(retMatrix(i,k))==0) then
-            retMatrix(i,k)=0
+    do j=1,m,1
+        if (outMatrix(i,j)==-0.0) then 
+            outMatrix(i,j)=0.0
         end if
     end do
 end do
+deallocate(curRow)
+deallocate(nextRow)
 end function RREF
-
 !!!Function for determinant
 real function det(matrix,n,m) RESULT(r)
 implicit none
@@ -701,20 +724,21 @@ end function eigenvals
 !! Pseudo-Inverse() should return the pseudo-inverse of a given matrix.  Any size.  Function should work.  
 
 !also make Span(), Rank()
-!!Subroutine for SVD USE JACOBI
+!!Subroutine for SVD USE JACOBI.  
 subroutine SVD(inMatrix,U,S,VT) 
 implicit none
 real, intent(in)::inMatrix(:,:)
-integer::n,m, count, sweep, sweepMax, i, j
-real::DBLeps, tol
-real, intent(out), dimension(:,:)::U,S,VT
+integer::n,m, count, sweep, sweepMax, i, j, k, sorted, orthog, noisyA, noisyB
+real::DBLeps, tol, p1, q1, a1, b1, sine, cosine, v, aerrorA, aerrorB, normC, prevNorm, aij, aik, qij, qik
+real, intent(out), dimension(:,:)::U,VT
+real, intent(out), dimension(:)::S
 real,dimension(:,:), allocatable::A,Q
-real,dimension(:), allocatable::t
+real,dimension(:), allocatable::t, cj, ck, col
 n = size(inMatrix,dim=1) !#rows
 m = size(inMatrix,dim=2) !#cols
 allocate(A(n,m)) !copy of inMatrix
 allocate(Q(m,m)) !copy V
-allocate(t(m), source=0.0) !copy S 
+allocate(t(m), source=0.0) !copy S !the zeroes thing.  
 DBLeps = 1.0e-15
 A = inMatrix
 Q = eye(m,m)
@@ -722,7 +746,7 @@ Q = eye(m,m)
 count=1
 sweep=0
 sweepMax = max(5*m,12)
-tol = 10*m*DBLeps
+tol = 10*n*DBLeps
 
 !fill column vector values
 do j=1,m,1
@@ -731,13 +755,196 @@ end do
 
 !continue from here. try to use more .gt. type ones as this looks cooler.  
 do while((count.gt.0.0).AND.(sweep.le.sweepMax))
-    !code goes in here
-end do
+    count = (m*(m-1))/2 !rotation counter.  
+    do j=1,(m-1),1
+        do k=j+1,m,1
+            !may have to write allocation procedure here so that they deallocate if already allocated, then reallocate every loop.  
+            !Will need to be done incrementally.  Def them as dimension(:) types and only alloc/dealloc here.  a & b are reals.  
+            if (allocated(cj)) then 
+                deallocate(cj)
+            end if
+            if (allocated(ck)) then 
+                deallocate(ck)
+            end if
+            allocate(cj(m))
+            allocate(ck(m))
+            cj=A(:,j)
+            ck=A(:,k)
+            p1=2*dot_product(cj,ck)
+            a1=Norm(cj)
+            b1=Norm(ck)
+            !test for orthogonality or error in the cols.  
+            aerrorA = t(j) !these two only need to be defined as reals since they're reading from the arrays.  
+            aerrorB = t(k)
+            q1=(a1*a1)-(b1*b1)
 
+            v=(p1**2)+(q1**2)
+
+            !If switches are here for the various values
+            if (a1.ge.b1) then 
+                sorted=1 !def sorted as an integer.  
+            else
+                sorted=0
+            end if
+            if (abs(p1).le.(tol*(a1*b1))) then
+                orthog=1 !def Orthog auch Integer. 
+            else
+                orthog=0
+            end if
+            if (a1.lt.aerrorA) then
+                noisyA=1
+            else
+                noisyA=0
+            end if
+            if (b1.lt.aerrorB) then 
+                noisyB=1
+            else
+                noisyB=0
+            end if 
+            !end switches.  
+            !check
+            if (sorted==1.AND.(orthog==1.OR.noisyA==1.OR.noisyB==1)) then
+                count = count-1
+                continue
+            end if
+            !continue from here.  
+            if (v==0.OR.sorted==0) then 
+                cosine=0.0
+                sine=1.0
+            else
+                cosine=sqrt(((v+q1)/(2.0*v)))
+                sine=(p1/(2.0*v*cosine))
+            end if
+            !Apply rotation to A
+            do i=1,n,1
+                Aik=A(i,k)
+                Aij=A(i,j)
+                A(i,j)=Aij*cosine+Aik*sine
+                A(i,k)=-Aij*sine +Aik*cosine
+            end do
+            !update the singular values
+            t(j) = abs(cosine)*aerrorA + abs(sine)*aerrorB
+            t(k) = abs(sine)*aerrorA + abs(cosine)*aerrorB
+
+            !Apply rotation to Q now
+            do i=1,m,1
+                Qij=Q(i,j)
+                Qik=Q(i,k)
+                Q(i,j)=(Qij*cosine)+(Qik*sine)
+                Q(i,k)=(-Qij*sine)+(Qik*cosine)
+            end do
+        end do
+    end do
+    sweep = sweep+1
+end do
+!now compute the singular values
+prevNorm = -1.0
+do j=1,m,1
+    col = A(:,j) !by ref
+    normC = Norm(col)
+    !det if the sing val is zero
+    if ((normC==0.0).OR.prevNorm==0.0.OR.((j.gt.0.0).AND.(normC.le.(tol*prevNorm)))) then
+        t(j)=0.0
+        do i=1,size(col),1
+            col(i)=0.0 !updates A indirectly
+        end do
+        prevNorm=0.0
+    else
+        t(j)= normC
+        do i=1,size(col),1
+            col(i)=(col(i)*(1.0/normC))
+        end do
+        prevNorm = normC
+    end if
+end do
+if (count.gt.0.0) then 
+    write(*,*)'DOES NOT CONVERGE WITH JACOBI ITERS'
+end if
+U=A
+S=t
+Vt = transpose(Q) 
+
+if(n.lt.m) then 
+    U=U(:,0:n)
+    S=t(0:n)
+    Vt=Vt(0:n,:)
+end if
+!U, S, & Vh are automatically assigned/returned. 
+write(*,*)
+write(*,*)'U Matrix:'
+call printMatrix(U,m,m)
+write(*,*)'S Matrix:'
+call printMatrix(S,m,1)
+write(*,*)'V Transpose Matrix:'
+call printMatrix(Vt,n,n)
 end subroutine 
 !Truncated SVD might be more interesting to look into.  
 
+subroutine SVD2(inMatrix,U,S,VT) 
+implicit none
+real, intent(in)::inMatrix(:,:)
+real, intent(out), dimension(:,:)::U,VT,S
+integer::n,m
+real,dimension(:,:), allocatable::A, AT, AAT, ATA, eigenVecs
+real,dimension(:), allocatable::eigensAAT,eigensATA,singVals
+n = size(inMatrix,dim=1) !#rows
+m = size(inMatrix,dim=2) !#cols
+allocate(A(n,m))
+allocate(AT(m,n))
+allocate(AAT(n,n))
+allocate(ATA(m,m))
+allocate(eigensAAT(n))
+allocate(singVals(n))
+allocate(eigenVecs(n,m))
+!Manually calculate all of the SVD's since the fucking Jacobi won't work.  
+A = inMatrix
+AT = transpose(A)
+!Need to first calculate AAT
+AAT = matmul(A,AT)
+ATA = matmul(AT,A)
+!take the eigens of AAT
+eigensAAT = eigenvals(AAT)
+singVals = sqrt(eigensAAT)
+!call printMatrix(eigensAAT,n,1) !for checking purposes.  
+!call printMatrix(singVals,n,1)
+!now that the eigens of AAT have been retrieved.  
+eigenvecs = eigenvectors(ATA,eigensAAT)
+
+end subroutine 
 
 !!Might also be good to do alternate *forward solving* version using other website.  
+!create an eigenvectors function; returns the matrix of the eigenvectors.  
+function eigenvectors(inMatrix,eigens) RESULT(eigenMatrix)
+implicit none
+real, intent(in)::inMatrix(:,:) !for the input
+real, intent(in)::eigens(:) !for all eigenvals
+integer::n,m, i, j
+real, dimension(:,:), allocatable::A,AR,eigenMatrix
+real, dimension(:), allocatable::selectedRow !for the output.  
+n = size(inMatrix,dim=1) !#rows
+m = size(inMatrix,dim=2) !#cols
+allocate(eigenMatrix(n,m))
+allocate(AR(n,m))
+allocate(A(n,m+1),source=0.0)
+allocate(selectedRow(m))
+
+!give us A with an extra row of zeroes to solve for.  
+!make an eye matrix
+AR = inMatrix-eigens(1)*eye(n,m) !swap eigens in position i.
+!write(*,*)'This part of the code is running!'
+call printMatrix(AR,n,m)
+AR = RREF(AR)
+call printMatrix(AR,n,m)
+
+
+!A = A + AR
+!zero out the last column of A
+!A(:,m+1) = 0.0
+!call printMatrix(A,n,m+1)
+!row reduce using RREF
+
+
+!Call the find eigenvalues
+end function eigenVectors
 
 end program matrixOperations
