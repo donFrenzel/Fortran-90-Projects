@@ -999,42 +999,7 @@ end do
 !write(*,*)'Normalized:',eigenVector
 !eigenvectors are now normalized. 
 eigenMatrix(n,:)=0.0
-A=0.0!reset again
-A=A+eigenMatrix
-A(:,m+1)=0.0
-!solve le system of equations
-A = RREF(A)
-prevPivRow=0
-do j=1,m,1
-    do i=1,n,1
-        if (prevPivRow/=i.AND.A(i,j)==1.0) then 
-            !check and allocate then reallocate
-            !we know that i & j are the positions o
-            prevPivRow=prevPivRow+1
-        else
-            curVal=A(i,j)
-            A(i,m+1)=A(i,m+1)-curVal
-            A(i,j)=A(i,j)-curVal
-        end if       
-    end do
-end do
-freeCols=0
-ticker=0
-do j=1,m,1
-    if(all(A(:,j)==0.0)) then 
-        freeCols(ticker+1) = j !stores indices of free variables.  
-        ticker=ticker+1
-    else
-        !should be all 1's at this point assuming RREF
-        eigenVector(j) = A(j,m+1)
-    end if
-end do
-freeCols(ticker+1:m)=0.0
-do j=1,m,1
-    if(freeCols(j)/=0.0) then 
-        eigenVector(freeCols(j)) = 1.0
-    end if
-end do
+
 eigenVector = eigenVector/Norm(eigenVector)
 eigenMatrix(n,:) = eigenVector
 
@@ -1053,6 +1018,9 @@ eigenMatrix(n,:) = eigenVector
 !real,dimension(:),allocatable::output
 !n = size(inMatrix,dim=1) !#rows
 !m = size(inMatrix,dim=2) !#cols
+eigenVector = solveSystem(eigenMatrix(1:2,:))
+eigenVector = eigenVector/Norm(eigenVector)
+eigenMatrix(n,:) = eigenVector
 
 !call printMatrix(A,n,m+1)
 eigenMatrix = transpose(eigenMatrix) !put into form where the eigenvectors are vertical column vectors.  
@@ -1063,5 +1031,59 @@ write(*,*)'Matrix of Eigenvectors (columns):'
 call printMatrix(eigenMatrix,n,m) !check for final printing.  !technically already transposed.  
 
 end function eigenVectors
+
+!Function for solving the system of equations (used in eigenvectors function)
+function solveSystem(inMatrix) RESULT(solutions)
+implicit none
+real,intent(in)::inMatrix(:,:)
+integer::n,m,i,j,prevPivRow,ticker
+real::curVal
+integer,dimension(:),allocatable::freeCols
+real,dimension(:),allocatable::solutions
+real,dimension(:,:),allocatable::A
+n = size(inMatrix,dim=1) !#rows
+m = size(inMatrix,dim=2) !#cols
+allocate(A(n,m+1))
+allocate(freeCols(m))
+allocate(solutions(m))
+A=0.0!reset again
+A=A+inMatrix
+A(:,m+1)=0.0
+!begin here.  
+A = RREF(A)
+prevPivRow=0
+do j=1,m,1
+    do i=1,n,1
+        if (prevPivRow/=i.AND.A(i,j)==1.0) then 
+            prevPivRow=prevPivRow+1
+        else
+            curVal=A(i,j)
+            A(i,m+1)=A(i,m+1)-curVal
+            A(i,j)=A(i,j)-curVal
+        end if       
+    end do
+end do
+freeCols=0
+ticker=0
+do j=1,m,1
+    if(all(A(:,j)==0.0)) then 
+        freeCols(ticker+1) = j !stores indices of free variables.  
+        ticker=ticker+1
+    else
+        !should be all 1's at this point assuming RREF
+        solutions(j) = A(j,m+1)
+    end if
+end do
+freeCols(ticker+1:m)=0.0
+do j=1,m,1
+    if(freeCols(j)/=0.0) then 
+        solutions(freeCols(j)) = 1.0
+    end if
+end do
+deallocate(A)
+deallocate(freeCols)
+end function solveSystem
+
+
 
 end program matrixOperations
