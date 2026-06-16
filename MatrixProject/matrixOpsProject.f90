@@ -23,14 +23,14 @@ allocate(vec3(n))
 allocate(outerProd(m,n))
 allocate(retMat2(n,m))
 
-allocate(U(m,m))
+allocate(U(n,n))
 allocate(S1(m))
 allocate(S(n,m))
-allocate(VT(n,n))
+allocate(VT(m,m))
 
 !remember that n = nRows, m = nCols
 !! Insert file values into the matrix from input 10.
-open(20,file='matrix4.txt', status='old')
+open(20,file='matrix.txt', status='old')
 !! Create file-read method for this.  Basically just from one input to another, or allow multi-input?  File works better I think.  
 do i=1,n,1
     do j=1,m,1
@@ -96,7 +96,16 @@ outerprod = outerProduct(vec2,vec3)
 !write(*,*)'The Eigenvalues of the Matrix are:'
 !write(*,*)eigs
 
-call SVD2(myMatrix,U,S,VT)
+!SVD now works!
+call SVD(myMatrix,U,S,VT)
+write(*,*)'U Matrix: '
+call printMatrix(U,n,n)
+
+write(*,*)'Sigma Matrix: '
+call printMatrix(S,n,m)
+
+write(*,*)'V Transpose Matrix: '
+call printMatrix(VT,m,m)
 
 !call printMatrix(mymatrix,n,m)
 close(20)
@@ -664,6 +673,8 @@ do i=1,m-2,1
     outMatrix(1:m,i+1:m)=outMatrix(1:m,i+1:m) - 2.0*outerProduct(matmul(outMatrix(1:m,i+1:m),v),v)
 end do
 outMatrix = roundSmalls(outMatrix)
+deallocate(x)
+deallocate(v)
 !call printMatrix(outMatrix,n,m)
 end function hessenberg
 
@@ -727,172 +738,23 @@ do i=1,n,1
 end do
 !then sort them.  
 eigens = simpleSort(eigens)
+
+deallocate(eigenMatrix)
+deallocate(shift)
+deallocate(Q)
+deallocate(R)
 end function eigenvals
 !! Pseudo-Inverse() should return the pseudo-inverse of a given matrix.  Any size.  Function should work.  
 
 !also make Span(), Rank()
-!!Subroutine for SVD USE JACOBI.  
+!Truncated SVD might be more interesting to look into.  
+!SVD Function is here!!!
 subroutine SVD(inMatrix,U,S,VT) 
 implicit none
 real, intent(in)::inMatrix(:,:)
-integer::n,m, count, sweep, sweepMax, i, j, k, sorted, orthog, noisyA, noisyB
-real::DBLeps, tol, p1, q1, a1, b1, sine, cosine, v, aerrorA, aerrorB, normC, prevNorm, aij, aik, qij, qik
-real, intent(out), dimension(:,:)::U,VT
-real, intent(out), dimension(:)::S
-real,dimension(:,:), allocatable::A,Q
-real,dimension(:), allocatable::t, cj, ck, col
-n = size(inMatrix,dim=1) !#rows
-m = size(inMatrix,dim=2) !#cols
-allocate(A(n,m)) !copy of inMatrix
-allocate(Q(m,m)) !copy V
-allocate(t(m), source=0.0) !copy S !the zeroes thing.  
-DBLeps = 1.0e-15
-A = inMatrix
-Q = eye(m,m)
-!counters & setup
-count=1
-sweep=0
-sweepMax = max(5*m,12)
-tol = 10*n*DBLeps
-
-!fill column vector values
-do j=1,m,1
-    t(j) = Norm(A(:,j)) !t should be a collection of the norms of all of the column vectors.  
-end do
-
-!continue from here. try to use more .gt. type ones as this looks cooler.  
-do while((count.gt.0.0).AND.(sweep.le.sweepMax))
-    count = (m*(m-1))/2 !rotation counter.  
-    do j=1,(m-1),1
-        do k=j+1,m,1
-            !may have to write allocation procedure here so that they deallocate if already allocated, then reallocate every loop.  
-            !Will need to be done incrementally.  Def them as dimension(:) types and only alloc/dealloc here.  a & b are reals.  
-            if (allocated(cj)) then 
-                deallocate(cj)
-            end if
-            if (allocated(ck)) then 
-                deallocate(ck)
-            end if
-            allocate(cj(m))
-            allocate(ck(m))
-            cj=A(:,j)
-            ck=A(:,k)
-            p1=2*dot_product(cj,ck)
-            a1=Norm(cj)
-            b1=Norm(ck)
-            !test for orthogonality or error in the cols.  
-            aerrorA = t(j) !these two only need to be defined as reals since they're reading from the arrays.  
-            aerrorB = t(k)
-            q1=(a1*a1)-(b1*b1)
-
-            v=(p1**2)+(q1**2)
-
-            !If switches are here for the various values
-            if (a1.ge.b1) then 
-                sorted=1 !def sorted as an integer.  
-            else
-                sorted=0
-            end if
-            if (abs(p1).le.(tol*(a1*b1))) then
-                orthog=1 !def Orthog auch Integer. 
-            else
-                orthog=0
-            end if
-            if (a1.lt.aerrorA) then
-                noisyA=1
-            else
-                noisyA=0
-            end if
-            if (b1.lt.aerrorB) then 
-                noisyB=1
-            else
-                noisyB=0
-            end if 
-            !end switches.  
-            !check
-            if (sorted==1.AND.(orthog==1.OR.noisyA==1.OR.noisyB==1)) then
-                count = count-1
-                continue
-            end if
-            !continue from here.  
-            if (v==0.OR.sorted==0) then 
-                cosine=0.0
-                sine=1.0
-            else
-                cosine=sqrt(((v+q1)/(2.0*v)))
-                sine=(p1/(2.0*v*cosine))
-            end if
-            !Apply rotation to A
-            do i=1,n,1
-                Aik=A(i,k)
-                Aij=A(i,j)
-                A(i,j)=Aij*cosine+Aik*sine
-                A(i,k)=-Aij*sine +Aik*cosine
-            end do
-            !update the singular values
-            t(j) = abs(cosine)*aerrorA + abs(sine)*aerrorB
-            t(k) = abs(sine)*aerrorA + abs(cosine)*aerrorB
-
-            !Apply rotation to Q now
-            do i=1,m,1
-                Qij=Q(i,j)
-                Qik=Q(i,k)
-                Q(i,j)=(Qij*cosine)+(Qik*sine)
-                Q(i,k)=(-Qij*sine)+(Qik*cosine)
-            end do
-        end do
-    end do
-    sweep = sweep+1
-end do
-!now compute the singular values
-prevNorm = -1.0
-do j=1,m,1
-    col = A(:,j) !by ref
-    normC = Norm(col)
-    !det if the sing val is zero
-    if ((normC==0.0).OR.prevNorm==0.0.OR.((j.gt.0.0).AND.(normC.le.(tol*prevNorm)))) then
-        t(j)=0.0
-        do i=1,size(col),1
-            col(i)=0.0 !updates A indirectly
-        end do
-        prevNorm=0.0
-    else
-        t(j)= normC
-        do i=1,size(col),1
-            col(i)=(col(i)*(1.0/normC))
-        end do
-        prevNorm = normC
-    end if
-end do
-if (count.gt.0.0) then 
-    write(*,*)'DOES NOT CONVERGE WITH JACOBI ITERS'
-end if
-U=A
-S=t
-Vt = transpose(Q) 
-
-if(n.lt.m) then 
-    U=U(:,0:n)
-    S=t(0:n)
-    Vt=Vt(0:n,:)
-end if
-!U, S, & Vh are automatically assigned/returned. 
-write(*,*)
-write(*,*)'U Matrix:'
-call printMatrix(U,m,m)
-write(*,*)'S Matrix:'
-call printMatrix(S,m,1)
-write(*,*)'V Transpose Matrix:'
-call printMatrix(Vt,n,n)
-end subroutine 
-!Truncated SVD might be more interesting to look into.  
-
-subroutine SVD2(inMatrix,U,S,VT) 
-implicit none
-real, intent(in)::inMatrix(:,:)
-real, intent(out), dimension(:,:)::U,VT,S
-integer::n,m,i,j
-real,dimension(:,:), allocatable::A, AT, AAT, ATA, eigenVecs,identS
+real, intent(inout),dimension(:,:)::U,VT,S
+integer::n,m,i
+real,dimension(:,:), allocatable::A, AT, AAT, ATA, eigenVecs,identS,Uproto
 real,dimension(:), allocatable::eigensAAT,singVals
 n = size(inMatrix,dim=1) !#rows
 m = size(inMatrix,dim=2) !#cols
@@ -900,10 +762,11 @@ allocate(A(n,m))
 allocate(AT(m,n))
 allocate(AAT(n,n))
 allocate(ATA(m,m))
-allocate(eigensAAT(n))
-allocate(singVals(n))
-allocate(eigenVecs(n,m))
+allocate(eigensAAT(m))
+allocate(singVals(m))
+allocate(eigenVecs(m,m))
 allocate(identS(n,m))
+allocate(Uproto(n,n))
 !Manually calculate all of the SVD's since the fucking Jacobi won't work.  
 A = inMatrix
 AT = transpose(A)
@@ -918,20 +781,31 @@ identS = eye(n,m)
 do i=1,m,1
     identS(i,i)=identS(i,i)*singVals(i)
 end do
-S = identS !Sigma Matrix is now in full effect.  Works amazingly!
-
 !works right now
-!call printMatrix(eigensAAT,n,1) !for checking purposes.  
-!call printMatrix(singVals,n,1)
-!now that the eigens of AAT have been retrieved.  
 eigenvecs = eigenvectors(ATA,eigensAAT) !gets the V matrix essentially.  
-VT=transpose(eigenvecs) !and this is officially VT.  
-
+VT=transpose(eigenvecs)!and this is officially VT.  
+!write(*,*)'V Transpose Matrix:'
+!call printMatrix(VT,m,m)
+deallocate(AT)
+deallocate(AAT)
+deallocate(ATA)
+deallocate(eigensAAT)
 !Compute left singular vectors using VT, singVals, and the originally A (input Matrix)
 !THIS IS WHAT TO DO NEXT. 
-
-
-end subroutine 
+!leftsingular vectors 
+!u_i=1/(sv_i)*A*v_i
+!basically the ith vector of u is equal to 1/ith singVal multiplied by the matrix multiplication of the original matrix and the eigenvectors.  
+Uproto=0.0
+do i=1,n,1
+    Uproto(:,i) = matmul(A,eigenvecs(:,i))*(1/singVals(i))
+end do
+U=Uproto
+!write(*,*)'U Matrix:'
+!call printMatrix(U,n,n)
+S = identS !Sigma Matrix is now in full effect.  Works amazingly!
+!write(*,*)'Sigma Matrix:'
+!call printMatrix(S,n,m)
+end subroutine SVD
 
 !!Might also be good to do alternate *forward solving* version using other website.  
 !create an eigenvectors function; returns the matrix of the eigenvectors.  
@@ -957,7 +831,9 @@ do k=1,size(eigens),1
     AR = inMatrix-eigens(k)*eye(n,m) !swap eigens in position i.
     !write(*,*)'This part of the code is running!'
     !Here is where it can be functionalized.  
+    !call printMatrix(RREF(AR),n,m) !issue is not with RREF.  DEFFO LOOK INTO SOLVESYSTEM.  SUS!
     eigenVector = solveSystem(AR)
+    !call printMatrix(eigenVector,n,m+1) !look into how solvesystem works to find the bug.  
     eigenVector = eigenVector/Norm(eigenVector) !normalize eigenvectors.  
     eigenMatrix(k,:) = eigenVector
     eigenVector=0.0
@@ -972,14 +848,11 @@ if (numEigs.lt.m) then
         counter=counter+1
     end do
 end if
-
-!call printMatrix(A,n,m+1)
 eigenMatrix = transpose(eigenMatrix) !put into form where the eigenvectors are vertical column vectors.  
-!Now check if there are more eigenvectors than eigenvalues, if so, an extra step must be done to figure out the last one.  
-write(*,*)
-write(*,*)'Matrix of Eigenvectors (columns):'
-call printMatrix(eigenMatrix,n,m) !check for final printing.  !technically already transposed.  
-
+deallocate(AR)
+deallocate(A)
+deallocate(eigenVector)
+deallocate(freeCols)
 end function eigenVectors
 
 !Function for solving the system of equations (used in eigenvectors function primarily)
