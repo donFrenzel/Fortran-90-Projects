@@ -946,85 +946,24 @@ do k=1,size(eigens),1
     AR = inMatrix-eigens(k)*eye(n,m) !swap eigens in position i.
     !write(*,*)'This part of the code is running!'
     !Here is where it can be functionalized.  
-    AR = RREF(AR)
-    A=A+AR
-    A(:,m+1) = 0.0 !set the last col to zero.
-    !keep track of the pivot column indices.  
-    prevPivRow=0
-    !Should only go across the existing matrix, last column not to be measured AT ALL.  
-    do j=1,m,1
-        do i=1,n,1
-            if (prevPivRow/=i.AND.A(i,j)==1.0) then 
-                !check and allocate then reallocate
-                !we know that i & j are the positions o
-                prevPivRow=prevPivRow+1
-            else
-                curVal=A(i,j)
-                A(i,m+1)=A(i,m+1)-curVal
-                A(i,j)=A(i,j)-curVal
-            end if
-        !mark the column as 'free variable' and move to the far right (solution bracket) by subtracting that value. 
-        !and if the previous Pivot row is the same as i and the value is nonzero, then label it as a free variable and subtract to the left.  
-        !now assigns free variables.  
-        !since j is now a column of free vals, we can just assign it to be equal to the first eigenvalue.  A character should be used for this.  
-        end do
-    end do
-    !Now use eigenVector array
-    !call printMatrix(A,n,m+1)
-    ticker=0
-    do j=1,m,1
-        if(all(A(:,j)==0.0)) then 
-            freeCols(ticker+1) = j !stores indices of free variables.  
-            ticker=ticker+1
-        else
-            !should be all 1's at this point assuming RREF
-            eigenVector(j) = A(j,m+1)
-        end if
-    end do
-    freeCols(ticker+1:m)=0.0
-
-    !now that all free variables are stored in memory, store their place in the resulting eigenvector as 1.  
-    do j=1,m,1
-        if(freeCols(j)/=0.0) then 
-            eigenVector(freeCols(j)) = 1.0
-        end if
-    end do
-    !write(*,*)eigenVector
-    !write(*,*)
+    eigenVector = solveSystem(AR)
     eigenVector = eigenVector/Norm(eigenVector) !normalize eigenvectors.  
     eigenMatrix(k,:) = eigenVector
-    A = 0.0 !reset A, otherwise residuals could cause all sorts of problems.  !oohhhh was only resetting the last one duh.  
     eigenVector=0.0
 end do
 !write(*,*)'Normalized:',eigenVector
 !eigenvectors are now normalized. 
-eigenMatrix(n,:)=0.0
-
-eigenVector = eigenVector/Norm(eigenVector)
-eigenMatrix(n,:) = eigenVector
-
-!!!Basically need to figure this part out depending on how many eigenvectors there are present within the whole thing.  
-
 !Flow is basically this: 
 !Input Matrix, Eigenvalues=> Eigenvectors determined with regular system->If there are less eigenvalues than the num of variables, follow
 !the same process to get them using previous solution->Output matrix of eigenvectors, which then are used for SVD.  
 
-!It might be prudent to incorporate the solution mechanism as its own function/subroutine.  Like maybe have it return the solution column for a 
-!matrix which might reduce otherwise.  maybe solve RREF?  BC Some RREF reduces to just a free one.  Maybe call the function 
-
-!function solveSystem(inMatrix) RESULT(solutions)
-!real,intent(in)::inMatrix(:,:)]
-!integer::n,m
-!real,dimension(:),allocatable::output
-!n = size(inMatrix,dim=1) !#rows
-!m = size(inMatrix,dim=2) !#cols
-eigenVector = solveSystem(eigenMatrix(1:2,:))
+!Create a conditional for these fellas.  
+eigenVector = solveSystem(eigenMatrix(1:size(eigens),:))
 eigenVector = eigenVector/Norm(eigenVector)
 eigenMatrix(n,:) = eigenVector
 
 !call printMatrix(A,n,m+1)
 eigenMatrix = transpose(eigenMatrix) !put into form where the eigenvectors are vertical column vectors.  
-
 !Now check if there are more eigenvectors than eigenvalues, if so, an extra step must be done to figure out the last one.  
 write(*,*)
 write(*,*)'Matrix of Eigenvectors (columns):'
@@ -1032,7 +971,8 @@ call printMatrix(eigenMatrix,n,m) !check for final printing.  !technically alrea
 
 end function eigenVectors
 
-!Function for solving the system of equations (used in eigenvectors function)
+!Function for solving the system of equations (used in eigenvectors function primarily)
+!Input is a matrix of any size and returns an array of solutions.  
 function solveSystem(inMatrix) RESULT(solutions)
 implicit none
 real,intent(in)::inMatrix(:,:)
@@ -1084,6 +1024,6 @@ deallocate(A)
 deallocate(freeCols)
 end function solveSystem
 
-
+!Next step after SVD is to create Moore-Penrose Pseudoinverse, which should be the last thing for a long minute.  
 
 end program matrixOperations
