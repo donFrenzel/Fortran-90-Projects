@@ -871,10 +871,13 @@ allocate(A(n,m+1))
 allocate(freeCols(m))
 allocate(solutions(m))
 A=0.0!reset again
+!call printMatrix(inMatrix,n,m) !note, try truncating the final value after performing Gauss-Jordan.  This should be a standard test in the 
+! solution.  If the corner value is too small, it could affect calculations and cause NANs.  
 A=A+inMatrix
 A(:,m+1)=0.0
 !begin here.  
-A = RREF(A)
+A = GaussJordan(A,n,m)
+call printMatrix(A,n,m)
 prevPivRow=0
 do j=1,m,1
     do i=1,n,1
