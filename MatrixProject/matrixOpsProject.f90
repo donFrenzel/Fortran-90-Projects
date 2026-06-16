@@ -876,8 +876,12 @@ A=0.0!reset again
 A=A+inMatrix
 A(:,m+1)=0.0
 !begin here.  
-A = GaussJordan(A,n,m)
-call printMatrix(A,n,m)
+A = GaussJordan(A,n,m+1) !take the gauss-jordan elim of it, then, eliminate the values smaller than the tolerance value.  
+call printMatrix(A,n,m+1)
+A(n,:) = 0
+call printMatrix(A,n,m+1)
+A=RREF(A)
+call printMatrix(A,n,m+1)
 prevPivRow=0
 do j=1,m,1
     do i=1,n,1
