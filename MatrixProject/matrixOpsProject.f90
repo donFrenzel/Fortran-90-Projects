@@ -25,7 +25,7 @@ allocate(retMat2(n,m))
 
 allocate(U(m,m))
 allocate(S1(m))
-allocate(S(m,n))
+allocate(S(n,m))
 allocate(VT(n,n))
 
 !remember that n = nRows, m = nCols
@@ -203,7 +203,7 @@ function eye(n,m,rightShift,downShift) RESULT(eyeMatrix)
 implicit none
 integer, intent(in)::n,m
 integer, intent(in), optional::rightShift,downShift
-integer::actRightShift,actDownShift,j
+integer::actRightShift,actDownShift,i,j
 real,dimension(n,m)::eyeMatrix
 eyeMatrix=0
 if (present(rightShift)) then
@@ -216,10 +216,12 @@ if (present(downShift)) then
 else
     actDownShift=0
 end if
-i=1+actDownShift
-do j=1+actRightShift,m,1
-    eyeMatrix(i,j)=1.0
-    i=i+1
+j=1
+do i=1+actDownShift,n,1
+    if (j.ge.1.AND.j.le.m) then
+        eyeMatrix(i,j+actRightShift) = 1.0
+        j=j+1
+    end if
 end do
 end function
 
@@ -889,9 +891,9 @@ subroutine SVD2(inMatrix,U,S,VT)
 implicit none
 real, intent(in)::inMatrix(:,:)
 real, intent(out), dimension(:,:)::U,VT,S
-integer::n,m
-real,dimension(:,:), allocatable::A, AT, AAT, ATA, eigenVecs
-real,dimension(:), allocatable::eigensAAT,eigensATA,singVals
+integer::n,m,i,j
+real,dimension(:,:), allocatable::A, AT, AAT, ATA, eigenVecs,identS
+real,dimension(:), allocatable::eigensAAT,singVals
 n = size(inMatrix,dim=1) !#rows
 m = size(inMatrix,dim=2) !#cols
 allocate(A(n,m))
@@ -901,6 +903,7 @@ allocate(ATA(m,m))
 allocate(eigensAAT(n))
 allocate(singVals(n))
 allocate(eigenVecs(n,m))
+allocate(identS(n,m))
 !Manually calculate all of the SVD's since the fucking Jacobi won't work.  
 A = inMatrix
 AT = transpose(A)
@@ -910,13 +913,24 @@ ATA = matmul(AT,A)
 !take the eigens of AAT
 eigensAAT = eigenvals(AAT)
 singVals = sqrt(eigensAAT)
+!Assign the singVals to their own matrix.  
+identS = eye(n,m)
+do i=1,m,1
+    identS(i,i)=identS(i,i)*singVals(i)
+end do
+S = identS !Sigma Matrix is now in full effect.  Works amazingly!
+
+!works right now
 !call printMatrix(eigensAAT,n,1) !for checking purposes.  
 !call printMatrix(singVals,n,1)
 !now that the eigens of AAT have been retrieved.  
-!eigensATA = eigenvals(ATA)
-!Try to round the values to the closest
-!write(*,*)'ATA Eigenvalues',eigensATA
-eigenvecs = eigenvectors(ATA,eigensAAT)
+eigenvecs = eigenvectors(ATA,eigensAAT) !gets the V matrix essentially.  
+VT=transpose(eigenvecs) !and this is officially VT.  
+
+!Compute left singular vectors using VT, singVals, and the originally A (input Matrix)
+!THIS IS WHAT TO DO NEXT. 
+
+
 end subroutine 
 
 !!Might also be good to do alternate *forward solving* version using other website.  
@@ -925,8 +939,7 @@ function eigenvectors(inMatrix,eigens) RESULT(eigenMatrix)
 implicit none
 real, intent(in)::inMatrix(:,:) !for the input
 real, intent(in)::eigens(:) !for all eigenvals
-integer::n,m,i,j,k,prevPivRow,ticker
-real::curVal
+integer::n,m,i,k,numEigs,counter
 real, dimension(:,:), allocatable::A,AR,eigenMatrix
 real, dimension(:), allocatable::eigenVector !for the output.  
 integer,dimension(:),allocatable::freeCols
@@ -938,9 +951,7 @@ allocate(AR(n,m))
 allocate(A(n,m+1),source=0.0)
 allocate(eigenVector(m)) !use for eigenvector column.  
 allocate(freeCols(m))
-!give us A with an extra row of zeroes to solve for.  
-!make an eye matrix
-
+numEigs = size(eigens)
 !Now put this into a do loop where k=1,size(eigens),1
 do k=1,size(eigens),1
     AR = inMatrix-eigens(k)*eye(n,m) !swap eigens in position i.
@@ -951,16 +962,16 @@ do k=1,size(eigens),1
     eigenMatrix(k,:) = eigenVector
     eigenVector=0.0
 end do
-!write(*,*)'Normalized:',eigenVector
-!eigenvectors are now normalized. 
-!Flow is basically this: 
-!Input Matrix, Eigenvalues=> Eigenvectors determined with regular system->If there are less eigenvalues than the num of variables, follow
-!the same process to get them using previous solution->Output matrix of eigenvectors, which then are used for SVD.  
-
-!Create a conditional for these fellas.  
-eigenVector = solveSystem(eigenMatrix(1:size(eigens),:))
-eigenVector = eigenVector/Norm(eigenVector)
-eigenMatrix(n,:) = eigenVector
+!if the number of eigenvalues obtained is less than the number of columns in the matrix (also rows) then it knows to orthogonalize.  
+counter=0
+if (numEigs.lt.m) then
+    do i=numEigs+1,n,1
+        eigenVector = solveSystem(eigenMatrix(1:numEigs+counter,:))
+        eigenVector = eigenVector/Norm(eigenVector)
+        eigenMatrix(i,:) = eigenVector
+        counter=counter+1
+    end do
+end if
 
 !call printMatrix(A,n,m+1)
 eigenMatrix = transpose(eigenMatrix) !put into form where the eigenvectors are vertical column vectors.  
@@ -1023,7 +1034,5 @@ end do
 deallocate(A)
 deallocate(freeCols)
 end function solveSystem
-
 !Next step after SVD is to create Moore-Penrose Pseudoinverse, which should be the last thing for a long minute.  
-
 end program matrixOperations
