@@ -1,10 +1,8 @@
 # Fortran-90-Projects
-All files are .f90 files.  Currently working on some matrix projects.  
+Compiler: gfortran Compiler.  You will need it or an equivalent to run any of the programs featured here.
 
-Most of these are simply exercises I have done in Fortran based on the textbook that I have been utilizing.  
+Foreword: This repo posesses a few different folders, the first of which is the PracticeProblems folder, which contains many of the exercises I did from the book I used to learn the programming language.  It is useful for reference and for tracing how the language works.  The second folder contains a file, mat2.f90 whose contents (excepting main) are to become a matrix operations library for use in future ML projects.  The lone file, BinaryConverter is merely a small experiment of mine in which I wrote a program for converting integer values (positive and negative) to binary with support for two's complement.  
 
-The primary project here is the filed named binaryconverter.f90, which converts any given integer (positive or negative) into binary.  It utilizes Two's Complement to handle negatives (as a subroutine that can be called) and also handles bit completion via zero extension.  
-
-This will be updated soon with a matrix calculator that takes a txt file as an input and performs a number of common matrix operations on them since FORTRAN 90 is specifically designed to handle vectors and matrices.  
-
-This currently works with the gfortran compiler.  You will need it or an equivalent to run any of the programs featured here.  
+Projects: 
+- Integer->Binary Converter (with support for negative numbers) (Although more of a proof of concept)
+- Matrix Operations Library -> There is a readme present in the file with more detail, but the gist of it is to create my own library for matrix operations since Fortran 90 does not support any operations by default except for dot_product, matmul, & transpose.  
