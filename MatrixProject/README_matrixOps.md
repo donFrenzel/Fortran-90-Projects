@@ -15,7 +15,7 @@
 *Matrix Subroutines:*
 - LU Decomposition (It's there but it's rudimentary - still needs implementation on its own as a subroutine)
 - QR Decomposition
-- SVD (soon to come)
+- SVD (limited functionality)
 
 *General Functions (misc.):*
 - Print Matrix
