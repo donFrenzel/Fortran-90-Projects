@@ -30,7 +30,7 @@ allocate(VT(m,m))
 
 !remember that n = nRows, m = nCols
 !! Insert file values into the matrix from input 10.
-open(20,file='matrix.txt', status='old')
+open(20,file='matrix2.txt', status='old') !process still works for matrix4.  
 !! Create file-read method for this.  Basically just from one input to another, or allow multi-input?  File works better I think.  
 do i=1,n,1
     do j=1,m,1
@@ -42,7 +42,7 @@ end do
 
 !! Step 1: Get Gauss-Jordan Elim, RREF - Write subroutines or functions for these.  
 !! Step 2: Span, Rank, Inverse[X], Determinant[X], Identity[X].   
-!! Step 3: Eigenvalues/Eigenmatrices
+!! Step 3: Eigenvalues/Eigenmatrices [X]
 
 !prints matrix first by rows, then by columns
 !FOR ENTRY OF MATRIX VIA TXT: Format is: Each subsequent value is a column.  It goes first line, second line third line; those are
@@ -59,6 +59,15 @@ call printMatrix(mymatrix,n,m)
 !write(*,*)'Gaussian Elim Matrix:'
 !call printMatrix(returnMatrix,n,m)
 !write(*,*)
+returnMatrix = GaussJordan(mymatrix,n,m)
+write(*,*)'Gaussian of Matrix'
+call printMatrix(returnMatrix,n,m)
+write(*,*)
+
+returnMatrix = GaussJordan2(mymatrix) !switch this back
+write(*,*)'Gaussian 2 of Matrix:'
+call printMatrix(returnMatrix,n,m)
+write(*,*)
 
 returnMatrix = RREF(mymatrix) !switch this back
 write(*,*)'RREF of Matrix:'
@@ -98,6 +107,7 @@ outerprod = outerProduct(vec2,vec3)
 
 !SVD now works!
 call SVD(myMatrix,U,S,VT)
+
 write(*,*)'U Matrix: '
 call printMatrix(U,n,n)
 
@@ -315,6 +325,97 @@ do i=1, m-1, 1
     end do
 end do
 end function GaussJordan
+
+function GaussJordan2(inMatrix) RESULT(outMatrix)
+implicit none
+real, intent(in)::inMatrix(:,:)
+integer::n,m,i,j,pivotR,nextPivotR
+real::pivotVal,curVal
+real,dimension(:),allocatable::curRow,nextRow
+real,dimension(:,:),allocatable::outMatrix
+n = size(inMatrix,dim=1) !#rows
+m = size(inMatrix,dim=2) !#cols
+allocate(outMatrix(n,m))
+allocate(curRow(m))
+allocate(nextRow(m))
+pivotR=1
+nextPivotR=1
+outMatrix = inMatrix
+!Basically copy over the logic from RREF BUT only allow it to go downwards instead of both directions from the current pivot.
+
+!Next idea, to help eliminate in the solveSystems function, the pivot values should be maintained at their original values after
+!complete multiplication.  
+do j=1,m,1
+    !sends all zero rows to the bottom for every step. 
+    !first check if the matrix is empty, in which case it should return itself
+    if (sum(outMatrix)==0.0) then
+        exit
+    end if
+    !move all zero rows to the bottom per column iteration.  
+    do i=1,n-1,1
+        curRow = outMatrix(i,:)
+        nextRow = outMatrix(i+1,:)
+        if(sum(curRow)==0.0) then 
+            !send this to the bottom
+            if (sum(nextRow)/=0.0) then 
+                outMatrix(i,:) = outMatrix(i+1,:)
+                outMatrix(i+1,:) = curRow
+            end if
+        end if
+    end do
+    !now that all zero rows are automatically sent to the bottom, find the first column which is a pivot.  
+    !current pivot position is 1, aka first position.  after finding the next pivot the two should swap. 
+    nextPivotR = 0
+    do i=pivotR,n,1
+        if(outMatrix(i,j)/=0.0) then 
+            !we know in this case that our current pivot is GOOD
+            nextPivotR=i
+            exit !exit the loop.  
+        end if 
+    end do
+    !cycle to next value in the loop if there are no valid pivots found.  
+    if (nextPivotR==0.0) then 
+        cycle
+    end if
+    !so now we have two pivot row indices, one for the current pivot (in this case 1) and another for the next one, currently next.  
+    !now, if nextPivotR.lt.pivotR then swap them.  
+    if (pivotR.lt.nextPivotR) then
+        curRow = outMatrix(nextPivotR,:)
+        outMatrix(nextPivotR,:) = outMatrix(pivotR,:)
+        outMatrix(pivotR,:) = curRow
+    end if
+    if(pivotR.lt.m) then
+    !now that we have the pivot row
+        pivotVal=outMatrix(pivotR,j)
+        !normalize the pivot row to the pivot value.  
+        outMatrix(pivotR,:)=outMatrix(pivotR,:)/pivotVal !should normalize it. 
+    end if
+    !go to all rows below the pivot and reduce them by the pivot value.  
+    do i=pivotR+1,n,1
+        curVal=outMatrix(i,j) 
+        outMatrix(i,:) = outMatrix(i,:)-(outMatrix(pivotR,:)*curVal)
+    end do
+    !now multiply row back by its pivotVal ONLY if it's less than m, as the mth or the last pivot rather will be the final value.  
+    if (pivotR.lt.m) then 
+        outMatrix(pivotR,:)=outMatrix(pivotR,:)*pivotVal
+    end if
+    !so far so good.  
+    pivotR = pivotR+1 !increase by 1 at the end, always.  
+    if (pivotR>n) then
+        exit
+    end if
+end do
+!Now gets rref.  Correct -0 values 
+do i=1,n,1
+    do j=1,m,1
+        if (outMatrix(i,j)==-0.0) then 
+            outMatrix(i,j)=0.0
+        end if
+    end do
+end do
+deallocate(curRow)
+deallocate(nextRow)
+end function GaussJordan2
 !Remember, a subroutine returns the value in place.  Return var specified at the top. 
 function RREF(inMatrix) RESULT(outMatrix)
 implicit none
@@ -860,28 +961,65 @@ end function eigenVectors
 function solveSystem(inMatrix) RESULT(solutions)
 implicit none
 real,intent(in)::inMatrix(:,:)
-integer::n,m,i,j,prevPivRow,ticker
-real::curVal
+integer::n,m,i,j,prevPivRow,ticker,pivCount,pivCts
+real::curVal,pivAvg
 integer,dimension(:),allocatable::freeCols
-real,dimension(:),allocatable::solutions
+real,dimension(:),allocatable::solutions,pivArray
 real,dimension(:,:),allocatable::A
 n = size(inMatrix,dim=1) !#rows
 m = size(inMatrix,dim=2) !#cols
 allocate(A(n,m+1))
 allocate(freeCols(m))
 allocate(solutions(m))
+allocate(pivArray(m))
 A=0.0!reset again
 !call printMatrix(inMatrix,n,m) !note, try truncating the final value after performing Gauss-Jordan.  This should be a standard test in the 
 ! solution.  If the corner value is too small, it could affect calculations and cause NANs.  
 A=A+inMatrix
 A(:,m+1)=0.0
 !begin here.  
-A = GaussJordan(A,n,m+1) !take the gauss-jordan elim of it, then, eliminate the values smaller than the tolerance value.  
-call printMatrix(A,n,m+1)
-A(n,:) = 0
-call printMatrix(A,n,m+1)
+A = GaussJordan2(A) !take the gauss-jordan elim of it, then, eliminate the values smaller than the tolerance value.  
+!check the pivots within the tolerance range
+!define tolerance as the rough average between the absolute values of the constituent pivots.
+!get the variance of each pivot from the average and then check to tell the magnitude of that difference?
+!find ones along the main diagonal? nth nonzero column entry?  so for like 
+prevPivRow=0
+pivCount=0
+pivArray=0.0
+do j=1,m,1
+    do i=1,n,1
+        if (prevPivRow.lt.i.AND.A(i,j)/=0.0) then 
+            !what we would want to do here is disregard the elements which are nonpivotelements
+            pivArray(prevPivRow+1)=A(i,j) !set this to be the main pivot element
+            prevPivRow=prevPivRow+1
+            pivCount=pivCount+1
+            exit !effectively cycles current loop.  
+        end if       
+    end do
+end do
+!zero them out by taking the average, then subtracting the average from all of them, rounding to nearest int, and then subtracting from abs.
+!near-zero values will effectively become zero.  
+pivArray = abs(pivArray)
+pivAvg=sum(pivArray(1:pivCount))/pivCount 
+pivArray(1:pivCount)=pivArray(1:pivCount)-pivAvg
+!int ->round to zero.  nint-> round to nearest number.  
+pivArray=nint(pivArray)
+pivAvg=nint(pivAvg)
+pivArray=abs(pivArray)-pivAvg
+!now, the incredibly small values should be zeroed out. 
+!we know that the values in the matrix will shrink over time so that all of the near null values will be on the bottom. Also for array.  
+pivCts=0 
+do i=1,pivCount,1
+    if (pivArray(i)==0.0) then 
+        exit
+    end if
+    pivCts=pivCts+1
+end do
+!piv cts should be the last point before zero
+do i=pivCts+1,n,1
+    A(i,:) = 0.0
+end do
 A=RREF(A)
-call printMatrix(A,n,m+1)
 prevPivRow=0
 do j=1,m,1
     do i=1,n,1
