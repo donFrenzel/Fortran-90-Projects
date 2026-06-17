@@ -60,12 +60,12 @@ call printMatrix(mymatrix,n,m)
 !call printMatrix(returnMatrix,n,m)
 !write(*,*)
 returnMatrix = GaussJordan(mymatrix,n,m)
-write(*,*)'Gaussian of Matrix'
+write(*,*)'Gaussian leading 1s of Matrix'
 call printMatrix(returnMatrix,n,m)
 write(*,*)
 
-returnMatrix = GaussJordan2(mymatrix) !switch this back
-write(*,*)'Gaussian 2 of Matrix:'
+returnMatrix = Gaussian(mymatrix) !switch this back
+write(*,*)'Gaussian of Matrix:'
 call printMatrix(returnMatrix,n,m)
 write(*,*)
 
@@ -326,7 +326,7 @@ do i=1, m-1, 1
 end do
 end function GaussJordan
 
-function GaussJordan2(inMatrix) RESULT(outMatrix)
+function Gaussian(inMatrix) RESULT(outMatrix)
 implicit none
 real, intent(in)::inMatrix(:,:)
 integer::n,m,i,j,pivotR,nextPivotR
@@ -415,7 +415,7 @@ do i=1,n,1
 end do
 deallocate(curRow)
 deallocate(nextRow)
-end function GaussJordan2
+end function Gaussian
 !Remember, a subroutine returns the value in place.  Return var specified at the top. 
 function RREF(inMatrix) RESULT(outMatrix)
 implicit none
@@ -978,7 +978,7 @@ A=0.0!reset again
 A=A+inMatrix
 A(:,m+1)=0.0
 !begin here.  
-A = GaussJordan2(A) !take the gauss-jordan elim of it, then, eliminate the values smaller than the tolerance value.  
+A = Gaussian(A) !take the gauss-jordan elim of it, then, eliminate the values smaller than the tolerance value.  
 !check the pivots within the tolerance range
 !define tolerance as the rough average between the absolute values of the constituent pivots.
 !get the variance of each pivot from the average and then check to tell the magnitude of that difference?
