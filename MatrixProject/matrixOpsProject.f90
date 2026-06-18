@@ -51,45 +51,35 @@ end do
 
 !mymatrix = transpose(mymatrix)
 write(*,*)'Input Matrix:'
-call printMatrix(mymatrix,n,m)
+call printMatrix(mymatrix)
 !call GaussJordan(mymatrix,retMatrix,n,m) !Remember, subroutines modify the values in-place.  So RREF can be called using the result.  
 !call RREF(mymatrix,retMatrix,n,m)
 
-!returnMatrix = GaussJordan(mymatrix,n,m)
-!write(*,*)'Gaussian Elim Matrix:'
-!call printMatrix(returnMatrix,n,m)
-!write(*,*)
-returnMatrix = GaussJordan(mymatrix,n,m)
-write(*,*)'Gaussian leading 1s of Matrix'
-call printMatrix(returnMatrix,n,m)
-write(*,*)
-
 returnMatrix = Gaussian(mymatrix) !switch this back
 write(*,*)'Gaussian of Matrix:'
-call printMatrix(returnMatrix,n,m)
+call printMatrix(returnMatrix)
 write(*,*)
 
 returnMatrix = RREF(mymatrix) !switch this back
 write(*,*)'RREF of Matrix:'
-call printMatrix(returnMatrix,n,m)
+call printMatrix(returnMatrix)
 write(*,*)
 
 if (n==m) then
-determinant = det(mymatrix,n,m)
+determinant = det(mymatrix)
 write(*,*)'The Determinant of the Matrix is:', determinant
 write(*,*)
 
-inv = inverse(mymatrix,n,m)
+inv = inverse(mymatrix)
 write(*,*)'The Inverse of the Matrix is:'
-call printMatrix(inv,n,m)
+call printMatrix(inv)
 !mymatrix = retMatrix
 end if
 
-retty = linearIndependence(mymatrix,n,m)
+retty = linearIndependence(mymatrix)
 !call QR(mymatrix,n,m,Q,R)
-!call printMatrix(Q,m,m)
+!call printMatrix(Q,m,m) !create checks to make sure for ALL subroutines that there is proper allocation.  LATER. 
 !call printMatrix(R,n,m)
-
 
 !!First vector of the matrix
 vec = mymatrix(1,:)
@@ -109,13 +99,13 @@ outerprod = outerProduct(vec2,vec3)
 call SVD(myMatrix,U,S,VT)
 
 write(*,*)'U Matrix: '
-call printMatrix(U,n,n)
+call printMatrix(U)
 
 write(*,*)'Sigma Matrix: '
-call printMatrix(S,n,m)
+call printMatrix(S)
 
 write(*,*)'V Transpose Matrix: '
-call printMatrix(VT,m,m)
+call printMatrix(VT)
 
 !call printMatrix(mymatrix,n,m)
 close(20)
@@ -126,12 +116,13 @@ contains
 
 !!!BASIC FUNCTIONS INCLUDE printMatrix, norm, and custom sign function.  
 !Define print matrix subroutine; inputs are the matrix and number of rows.  Rets matrix as-is.  
-subroutine printMatrix(matrix,n,m)
+subroutine printMatrix(inMatrix)
 implicit none
-integer::n,m,k
-real,dimension(n,m)::matrix
+real,intent(in)::inMatrix(:,:)
+integer::n,k
+n = size(inMatrix,dim=1) !#rows
 do k = 1, n
-    write(*,*)matrix(k,:)
+    write(*,*)inMatrix(k,:)
 end do
 write(*,*)
 return 
@@ -299,33 +290,7 @@ end function rowswap
 
 !END Simple operations.  
 !!!MATRIX OPERATIONS BEGIN HERE:  
-
-!!!Create GJ Subroutine here:
-function GaussJordan(matrix,n,m) RESULT(retMatrix)
-implicit none
-integer, intent(in)::n,m
-integer::i,k
-real::currVal,nextVal
-real,dimension(n,m)::matrix, retMatrix
-real,dimension(m)::selectedRow
-retMatrix = matrix !assign matrix value to keeper, avoids conflict.  
-!! Create a way to find the upper rightmost corner.  
-!! Divide the first value (1,1) for upper corner by itself 
-!! Then select that row and iterate through all rows below it until it reaches the last one n-1 necessary to avoid bogus values to use as scalar.  
-!! Then take scalar and multiply by the selected row and subtract that combination from the rows beneath the selected row. 
-do i=1, m-1, 1
-    currVal=retMatrix(i,i)
-    retMatrix(i,:)=retMatrix(i,:)/currVal !Reduces the row to it's leading 1 form.  
-    selectedRow = retMatrix(i,:)
-    !find succeeding values in the next row (needs a ceiling)
-    do k=i, n-1, 1
-        nextVal = retMatrix(k+1,i) 
-        !varRow = retMatrix(k+1,:)
-        retMatrix(k+1,:) = retMatrix(k+1,:)-(selectedRow*nextVal)
-    end do
-end do
-end function GaussJordan
-
+!Gaussian Elimination goes here.  
 function Gaussian(inMatrix) RESULT(outMatrix)
 implicit none
 real, intent(in)::inMatrix(:,:)
@@ -342,7 +307,6 @@ pivotR=1
 nextPivotR=1
 outMatrix = inMatrix
 !Basically copy over the logic from RREF BUT only allow it to go downwards instead of both directions from the current pivot.
-
 !Next idea, to help eliminate in the solveSystems function, the pivot values should be maintained at their original values after
 !complete multiplication.  
 do j=1,m,1
@@ -416,7 +380,8 @@ end do
 deallocate(curRow)
 deallocate(nextRow)
 end function Gaussian
-!Remember, a subroutine returns the value in place.  Return var specified at the top. 
+
+!RREF rewritten to be more universal with pivots.  
 function RREF(inMatrix) RESULT(outMatrix)
 implicit none
 real, intent(in)::inMatrix(:,:)
@@ -501,22 +466,23 @@ end do
 deallocate(curRow)
 deallocate(nextRow)
 end function RREF
-!!!Function for determinant
-real function det(matrix,n,m) RESULT(r)
+!!!Function for determinant !needs a rework. 
+real function det(inMatrix) RESULT(r)
 implicit none
-integer, intent(in)::n,m
-real,dimension(n,m), intent(in)::matrix
-real, dimension(n,m)::workMat
-real,dimension(:,:),allocatable::LMatrix
-real,dimension(m)::selectedRow
+real, intent(in)::inMatrix(:,:)
+real,dimension(:),allocatable::selectedRow !allocate to m
+real,dimension(:,:),allocatable::LMatrix,workMat
+integer::i,j,n,m
 real::a,b,c,d,detL,detU, currVal, nextVal, inputVal  !return for determinant
-integer::i,j
-
+n = size(inMatrix, dim=1) !#rows
+m = size(inMatrix, dim=2) !#columns
+allocate(workMat(n,m))
+allocate(selectedRow(m))
 if(n/=m) then
     write(*,*)'Cannot take the determinant of a nonsquare matrix.'
     return
 end if
-workMat = matrix
+workMat = inMatrix
 !!!Write the main gaussian upper trianguarization.  
 !check if 2x2matrix
 if(n==2) then
@@ -527,7 +493,6 @@ if(n==2) then
     r = ((a*d)-(c*b)) !Calculates determinant of 2x2 matrix specifically; regular algorithm will not work.  
     return
 end if
-
 if(n>2) then
     !Go through and construct upper triangular matrix while keeping track of diagonals as entries.  
     !Do Gauss-Jordan Elimination Method but only to the second-to-last column for U.  While doing this, keep track of the multiplicants and 
@@ -573,17 +538,23 @@ end if
 end function det
 
 !!Find the inverse of a matrix using a function to return the pure inverse.  This is done using LU Decomposition
-function inverse(matrix,n,m) RESULT(invMat)
+function inverse(inMatrix) RESULT(invMat)
 implicit none
-integer, intent(in)::n,m
-real,dimension(n,m), intent(in)::matrix
-real,dimension(n,m)::UMatrix,invMat,iMatrix,iMatrix2 !invMat is return value
-real,dimension(:,:),allocatable::LMatrix
-real,dimension(m)::selectedRow,selectedRow2 !second specifically for U inverse.  
+real,intent(in)::inMatrix(:,:)
+real,dimension(:,:),allocatable::LMatrix,UMatrix,invMat,iMatrix,iMatrix2 !invMat is return value
+real,dimension(:),allocatable::selectedRow,selectedRow2 !second specifically for U inverse.  
+integer::n,m
 real::currVal,nextVal,inputVal
-
-UMatrix = matrix !Assigns UMat
-allocate(LMatrix(n,m), source=0.0) !allocates the memory to it and fills all values with zeroes.  
+n = size(inMatrix, dim=1) !#rows
+m = size(inMatrix, dim=2) !#columns
+allocate(UMatrix(n,m)) !allocate memory for the input/used variables:
+allocate(invMat(n,m))
+allocate(iMatrix(n,m))
+allocate(iMatrix2(n,m))
+allocate(selectedRow(m))
+allocate(selectedRow2(m))
+allocate(LMatrix(n,m), source=0.0) !allocates the memory to it and fills all values with zeroes. 
+UMatrix = inMatrix !Assigns UMat
 do i=1,n,1
         LMatrix(i,i)=1.0
 end do
@@ -636,17 +607,21 @@ UMatrix = iMatrix
 invMat = matmul(UMatrix,LMatrix)
 end function inverse
 
-!Linear Independence Checker 
-integer function linearIndependence(matrix,n,m) RESULT(output)
+!Linear Independence Checker !all good now.  
+integer function linearIndependence(inMatrix) RESULT(output)
+real, intent(in)::inMatrix(:,:)
+real,dimension(:,:),allocatable::retMatrix !allocate to n,m
 integer::n,m,i,j,zeroFlag,countPivots
-real,dimension(n,m)::matrix,retMatrix
 real::currVal
+n = size(inMatrix, dim=1) !#rows
+m = size(inMatrix, dim=2) !#columns
+allocate(retMatrix(n,m))
 countPivots=0
 zeroFlag = 0
 !!Use Gaussian Elim since its the quickest. Output is a 0 or a 1; 1 being linearly independent, 0 being linearly dependent. 
 !call printMatrix(retMatrix,n,m)
 !!Take gaussian elimination and then count rows which consist of only zeroes.  
-retMatrix = GaussJordan(matrix,n,m)
+retMatrix = RREF(inMatrix) !rework to use gaussian.  
 !call printMatrix(retMatrix,n,m)
 !we know that there are m columns in the matrix.  
 !Now comb through and make sure that every row posesses a leading/pivot value on the diagonal.  If it does not, raise the zero flag and immediately return a 0.  
@@ -671,16 +646,20 @@ end if
 end function linearIndependence
 
 !Rank does Gaussian Elim, then checks to see how many nonzero rows exist.  Rank is the count of such vectors. 
-subroutine QR(matrix,n,m,Q,R)
+subroutine QR(inMatrix,Q,R)
+real,intent(in)::inMatrix(:,:)
+real,dimension(m,m),intent(out)::Q !m,m
+real,dimension(n,m),intent(out)::R !n,m
+real,dimension(:),allocatable::v !used for the QR decomposition portion of this
 integer::n,m,isLinInd
-real,dimension(n,m)::matrix
-real,dimension(m,m),intent(out)::Q
-real,dimension(n,m),intent(out)::R
-real,dimension(n)::v !used for the QR decomposition portion of this
+!take measurements
+n = size(inMatrix, dim=1) !#rows
+m = size(inMatrix, dim=2) !#columns
+allocate(v(n))
 Q=0!Sets all values of the matrix to zero.  
 R=0
 !!Check first to see if the given matrix is linearly independent or not
-isLinInd = linearIndependence(matrix,n,m)
+isLinInd = linearIndependence(inMatrix)
 !exit subroutine fail if the matrix is lin dep. 
 if (isLinInd==0) then
     write(*,*)'FAILURE: Cannot perform Graham Schmidt QR Decomp if matrix is linearly dependent.'
@@ -689,9 +668,9 @@ end if
 !selectedCol=matrix(:,n) !should get last column of values
 !Modified Graham Schmidt Method - more generally applicable. 
 do j=1,m,1
-    v = matrix(:,j)
+    v = inMatrix(:,j)
     do i=1,j,1
-        R(i,j)=dot_product(Q(:,i),matrix(:,j))
+        R(i,j)=dot_product(Q(:,i),inMatrix(:,j))
         v = v-R(i,j)*Q(:,i)
     end do
     R(j,j) = Norm(v)
@@ -812,7 +791,7 @@ if (n<5) then
     !Add previous code here. 
     do i=1,actIters,1
     !these two work well enough with 1000 iters for 3x3, 4x4 as well.  Tolerance very good.  
-    call QR(eigenMatrix,n,m,Q,R)
+    call QR(eigenMatrix,Q,R)
     eigenMatrix= matmul(R,Q)
     end do 
 else
@@ -822,7 +801,7 @@ else
         s = eigenMatrix(n,n)
         shift = s*eye(n,n)
         !call printMatrix(shift,n,n)
-        call QR(eigenMatrix-shift,n,m,Q,R) !assigns both Q and R
+        call QR(eigenMatrix-shift,Q,R) !assigns both Q and R
 
         eigenMatrix = matmul(R,Q)+shift !Check if there's one for matrix addition.  SHIFTS AREN'T ADDING UP.  
     end do
@@ -945,7 +924,7 @@ if (numEigs.lt.m) then
     do i=numEigs+1,n,1
         eigenVector = solveSystem(eigenMatrix(1:numEigs+counter,:))
         eigenVector = eigenVector/Norm(eigenVector)
-        eigenMatrix(i,:) = eigenVector
+        eigenMatrix(i,:) = eigenVector ! I believe this is where the problem is
         counter=counter+1
     end do
 end if
@@ -1052,5 +1031,6 @@ end do
 deallocate(A)
 deallocate(freeCols)
 end function solveSystem
-!Next step after SVD is to create Moore-Penrose Pseudoinverse, which should be the last thing for a long minute.  
+!Next step after SVD is to create Moore-Penrose Pseudoinverse, which should be the last NEW thing for a long minute.  
+
 end program matrixOperations
