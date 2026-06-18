@@ -4,7 +4,7 @@ implicit none
 !! Should determine Reduced Row Echelon Form using a radix sort of values
 !! NOTE: MAKE SURE THAT THE FILE IS WRITTEN IN ORDER: FIRST ROW->NthRow n=noRows, m = noCols
 integer::n,m,i,j,retty !Assigns values of row length and column height
-real,dimension(:,:),allocatable::mymatrix,returnMatrix,inv,Q,R,reye,outerprod,retMat2, U, VT, S
+real,dimension(:,:),allocatable::mymatrix,returnMatrix,inv,Q,R,reye,outerprod,retMat2, U, VT, S,L1,U1
 real,dimension(:),allocatable::vec,eigs,vec2,vec3,S1
 real::determinant,normal
 
@@ -30,7 +30,7 @@ allocate(VT(m,m))
 
 !remember that n = nRows, m = nCols
 !! Insert file values into the matrix from input 10.
-open(20,file='matrix2.txt', status='old') !process still works for matrix4.  
+open(20,file='matrix4.txt', status='old') !process still works for matrix4.  
 !! Create file-read method for this.  Basically just from one input to another, or allow multi-input?  File works better I think.  
 do i=1,n,1
     do j=1,m,1
@@ -94,6 +94,13 @@ outerprod = outerProduct(vec2,vec3)
 !eigs = eigenvals(mymatrix)
 !write(*,*)'The Eigenvalues of the Matrix are:'
 !write(*,*)eigs
+!Check LU decomposition: 
+!call LU(mymatrix,L1,U1)
+!write(*,*)'LU Decomposition:'
+!write(*,*)'L Matrix:'
+!call printMatrix(L1)
+!write(*,*)'U Matrix:'
+!call printMatrix(U1)
 
 !SVD now works!
 call SVD(myMatrix,U,S,VT)
@@ -607,26 +614,84 @@ UMatrix = iMatrix
 invMat = matmul(UMatrix,LMatrix)
 end function inverse
 
+!LU Decomposition
+subroutine LU(inMatrix,L,U)
+implicit none
+!variable declarations (Order is input/output, then declare allocatables, then declare reg types)
+real, intent(in)::inMatrix(:,:)
+real, dimension(:,:), allocatable, intent(out)::L,U
+real, dimension(:),allocatable::selectedRow
+integer::n,m,i,j
+real::currVal,nextVal,inputVal
+!Measurement for allocation
+n = size(inMatrix, dim=1) !#rows
+m = size(inMatrix, dim=2) !#columns
+!now that the size of the input variable has been defined, allocate the memory depending on the size of the matrix
+!allocation
+if (n/=m) then
+    allocate(L(n,n))
+    allocate(U(n,m))
+else
+    allocate(L(n,m))
+    allocate(U(n,m))
+end if
+allocate(selectedRow(m))
+!now that they have been properly allocated begin assignment
+U=inMatrix !assign inmatrix
+do i=1,n,1 !assign the diagonals to 1.0 to construct identity matrix
+        L(i,i)=1.0
+end do
+!perform decomposition into upper and lower triangular matrices.  
+do i=1, m-1, 1
+    selectedRow = U(i,:)
+    currVal = U(i,i)
+    do j=i, n-1, 1
+        nextVal = U(j+1,i) !!Nextval will be input into its place in the identity matrix.  
+        inputVal=(nextVal/currVal) !inputVal is to be entered into the precise place in the iMatrix
+        L(j+1,i)=inputVal
+        U(j+1,:)=U(j+1,:)-(selectedRow*inputVal)
+    end do
+end do
+!L & U should be properly decomposed now.  
+end subroutine LU
+
 !Linear Independence Checker !all good now.  
 integer function linearIndependence(inMatrix) RESULT(output)
 real, intent(in)::inMatrix(:,:)
+real, dimension(:),allocatable::selectedRow
 real,dimension(:,:),allocatable::retMatrix !allocate to n,m
-integer::n,m,i,j,zeroFlag,countPivots
-real::currVal
+integer::n,m,k,i,j,zeroFlag,countPivots, curPivRow
+real::currVal, nextVal
 n = size(inMatrix, dim=1) !#rows
 m = size(inMatrix, dim=2) !#columns
 allocate(retMatrix(n,m))
 countPivots=0
+curPivRow=0
 zeroFlag = 0
 !!Use Gaussian Elim since its the quickest. Output is a 0 or a 1; 1 being linearly independent, 0 being linearly dependent. 
 !call printMatrix(retMatrix,n,m)
 !!Take gaussian elimination and then count rows which consist of only zeroes.  
-retMatrix = RREF(inMatrix) !rework to use gaussian.  
-!call printMatrix(retMatrix,n,m)
+!retMatrix = RREF(inMatrix) !rework to use gaussian.  
+!write(*,*)'RREF of matrix'
+!call printMatrix(retMatrix)
+
+do i=1, m-1, 1
+    currVal=retMatrix(i,i)
+    retMatrix(i,:)=retMatrix(i,:)/currVal !Reduces the row to it's leading 1 form.  
+    selectedRow = retMatrix(i,:)
+    !find succeeding values in the next row (needs a ceiling)
+    do k=i, n-1, 1
+        nextVal = retMatrix(k+1,i) 
+        !varRow = retMatrix(k+1,:)
+        retMatrix(k+1,:) = retMatrix(k+1,:)-(selectedRow*nextVal)
+    end do
+end do
 !we know that there are m columns in the matrix.  
-!Now comb through and make sure that every row posesses a leading/pivot value on the diagonal.  If it does not, raise the zero flag and immediately return a 0.  
+!Now comb through and make sure that every row posesses a leading/pivot value on the !diagonal!.  If it does not, raise the zero flag and immediately return a 0.  
 !Every column must have a pivot value.  So keep a count of the pivot values.  
 !find first nonzero entry in the row.  Get the column it corresponds to.  
+!check rows not columns.  
+!check all of the rows and the columns.  
 do i=1,n,1
     do j=1,m,1
         currVal=retMatrix(i,j)
@@ -636,6 +701,8 @@ do i=1,n,1
         end if
     end do
 end do
+!write(*,*)'Count Pivots:',countPivots
+!call printMatrix(retMatrix)
 if (countPivots<m) then 
     output=0
     !write(*,*)'LINEARLY DEPENDENT'
@@ -648,18 +715,21 @@ end function linearIndependence
 !Rank does Gaussian Elim, then checks to see how many nonzero rows exist.  Rank is the count of such vectors. 
 subroutine QR(inMatrix,Q,R)
 real,intent(in)::inMatrix(:,:)
-real,dimension(m,m),intent(out)::Q !m,m
-real,dimension(n,m),intent(out)::R !n,m
+real,dimension(:,:),allocatable,intent(out)::Q,R!n,n !n,m
 real,dimension(:),allocatable::v !used for the QR decomposition portion of this
 integer::n,m,isLinInd
 !take measurements
 n = size(inMatrix, dim=1) !#rows
 m = size(inMatrix, dim=2) !#columns
+allocate(Q(n,n))
+allocate(R(n,m))
 allocate(v(n))
 Q=0!Sets all values of the matrix to zero.  
 R=0
 !!Check first to see if the given matrix is linearly independent or not
 isLinInd = linearIndependence(inMatrix)
+!write(*,*)'Is lin Ind'
+!call printMatrix(inMatrix)
 !exit subroutine fail if the matrix is lin dep. 
 if (isLinInd==0) then
     write(*,*)'FAILURE: Cannot perform Graham Schmidt QR Decomp if matrix is linearly dependent.'
@@ -787,12 +857,14 @@ allocate(Q(m,m))
 !!convert to upper hessenberg form.
 eigenMatrix = inMatrix  
 eigenMatrix = Hessenberg(eigenMatrix)
-if (n<5) then 
+if (n<50) then 
     !Add previous code here. 
     do i=1,actIters,1
     !these two work well enough with 1000 iters for 3x3, 4x4 as well.  Tolerance very good.  
-    call QR(eigenMatrix,Q,R)
-    eigenMatrix= matmul(R,Q)
+        call QR(eigenMatrix,Q,R)
+        eigenMatrix= matmul(R,Q)
+        Q=0 !reset values
+        R=0 !reset values afterwards; junk values appear more frequently over time.  
     end do 
 else
 !!Now do the algorithm.  Should be more accurate and converge quicker.  
@@ -855,6 +927,7 @@ AAT = matmul(A,AT)
 ATA = matmul(AT,A)
 !take the eigens of AAT
 eigensAAT = eigenvals(AAT)
+!write(*,*)eigensAAT
 singVals = sqrt(eigensAAT)
 !Assign the singVals to their own matrix.  
 identS = eye(n,m)
