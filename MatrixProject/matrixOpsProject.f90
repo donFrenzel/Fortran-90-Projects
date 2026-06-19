@@ -14,7 +14,7 @@ allocate(mymatrix(n,m)) !!Should allocate the necessary memory for an array of a
 allocate(returnMatrix(n,m))
 allocate(inv(n,m))
 allocate(vec(m))
-allocate(Q(m,m))
+allocate(Q(n,n))
 allocate(R(n,m))
 allocate(reye(n,m))
 allocate(eigs(m))
@@ -30,7 +30,7 @@ allocate(VT(m,m))
 
 !remember that n = nRows, m = nCols
 !! Insert file values into the matrix from input 10.
-open(20,file='matrix4.txt', status='old') !process still works for matrix4.  
+open(20,file='matrix2.txt', status='old') !process still works for matrix4.  
 !! Create file-read method for this.  Basically just from one input to another, or allow multi-input?  File works better I think.  
 do i=1,n,1
     do j=1,m,1
@@ -102,6 +102,9 @@ outerprod = outerProduct(vec2,vec3)
 !write(*,*)'U Matrix:'
 !call printMatrix(U1)
 
+!call householderQR(mymatrix,Q,R)
+!eigs=eigenvalsHouseholder(myMatrix)
+
 !SVD now works!
 call SVD(myMatrix,U,S,VT)
 
@@ -171,11 +174,11 @@ if (b==0.0) then
     s=0.0
 else
     if(abs(b)>abs(a)) then 
-        t=-a/b
+        t=a/b
         s=1/sqrt(1+t**2)
         c=s*t
     else
-        t=-b/a
+        t=b/a
         c=1/sqrt(1+t**2)
         s=c*t
     end if
@@ -874,7 +877,6 @@ else
         shift = s*eye(n,n)
         !call printMatrix(shift,n,n)
         call QR(eigenMatrix-shift,Q,R) !assigns both Q and R
-
         eigenMatrix = matmul(R,Q)+shift !Check if there's one for matrix addition.  SHIFTS AREN'T ADDING UP.  
     end do
 end if 
@@ -896,8 +898,111 @@ deallocate(shift)
 deallocate(Q)
 deallocate(R)
 end function eigenvals
-!! Pseudo-Inverse() should return the pseudo-inverse of a given matrix.  Any size.  Function should work.  
 
+!! Pseudo-Inverse() should return the pseudo-inverse of a given matrix.  Any size.  Function should work.  
+!Attempt 2 at Householder QR
+subroutine householderQR(inMatrix,Q,R)
+implicit none
+real,intent(in)::inMatrix(:,:)
+real,dimension(:,:),allocatable,intent(out)::Q,R
+real,dimension(:),allocatable::w
+real,dimension(:,:),allocatable::tempQ
+integer::n,m
+real::normX, tau, u1,s
+n = size(inMatrix,dim=1) !#rows
+m = size(inMatrix,dim=2) !#cols
+!allocation step
+allocate(R(n,m))
+allocate(Q(n,n))
+R=inMatrix
+Q=eye(n,n)
+do j=1,m,1
+    normX = Norm2(R(j:n,j))
+    if(normX<1.00e-10) cycle
+    s=sgn(R(j,j)) !s is just integer
+    u1=R(j,j)+(s*normX)!u1 is a real
+    if(abs(u1)<1.00e-10) cycle !this is what's causing the NaN's
+    if(allocated(w)) then 
+        deallocate(w)
+    end if 
+    allocate(w(n-j+1))
+    w=R(j:n,j)/u1 !w is a column vector with length n-j
+    w(1)=1.0 !w(1) is the first value
+    tau=s*(u1/normX) !tau is just a real
+    R(j:n,:)= R(j:n,:)-matmul(reshape(tau*w,[size(w),1]),(matmul(reshape(w,[1,size(w)]),R(j:n,:))))
+    if(allocated(tempQ)) then 
+        deallocate(tempQ)
+    end if
+    allocate(tempQ(size(Q,1),m-j+1))
+    tempQ=matmul(Q(:,j:n),(reshape(w,[size(w),1]))) !def as temp
+    Q(:,j:n)=Q(:,j:n)-matmul(tempQ,reshape(w*tau,[1,size(w)]))
+end do
+!now run roundsmalls on them
+Q=roundSmalls(Q)
+R=roundSmalls(R)
+end subroutine householderQR
+
+!Rewrite eigenValues 
+function eigenvalsHouseholder(inMatrix,iterations) RESULT(eigens)
+implicit none
+real, intent(in)::inMatrix(:,:)
+integer, intent(in), optional::iterations
+integer::n,m,actIters,i
+real::s, tol
+real, dimension(:),allocatable::eigens
+real, dimension(:,:),allocatable::eigenMatrix,shift, Q, R
+tol = 1.00e-5
+if (present(iterations)) then 
+    actIters = iterations
+else
+    actIters = 50
+end if
+n = size(inMatrix,dim=1) !#rows
+m = size(inMatrix,dim=2) !#cols
+!Allocate the vars 
+allocate(eigens(m))
+allocate(eigenMatrix(n,m))
+allocate(shift(n,m))
+allocate(R(n,m))
+allocate(Q(m,m))
+!begin
+eigenMatrix = inMatrix  
+if (n<50) then 
+    !Add previous code here. 
+    do i=1,actIters,1
+    !these two work well enough with 1000 iters for 3x3, 4x4 as well.  Tolerance very good.  
+        call householderQR(eigenMatrix,Q,R)
+        eigenMatrix= matmul(R,Q)
+        !call printMatrix(eigenMatrix)
+        Q=0 !reset values
+        R=0 !reset values afterwards; junk values appear more frequently over time.  
+    end do 
+else
+!!Now do the algorithm.  Should be more accurate and converge quicker.  
+    do i=1,actIters,1
+        !s is iterative shift
+        s = eigenMatrix(n,n)
+        shift = s*eye(n,n)
+        !call printMatrix(shift,n,n)
+        call householderQR(eigenMatrix-shift,Q,R) !assigns both Q and R
+        eigenMatrix = matmul(R,Q)+shift !Check if there's one for matrix addition.  SHIFTS AREN'T ADDING UP.  
+    end do
+end if 
+do i=1,n,1
+    if (abs(eigenMatrix(i,i))<tol) then 
+        eigens(i)=0.0
+    else
+        eigens(i)=eigenMatrix(i,i)
+    end if
+end do
+!then sort them.  
+eigens = simpleSort(eigens)
+write(*,*)eigens
+deallocate(eigenMatrix)
+deallocate(shift)
+deallocate(Q)
+deallocate(R)
+end function
 !also make Span(), Rank()
 !Truncated SVD might be more interesting to look into.  
 !SVD Function is here!!!
@@ -926,7 +1031,7 @@ AT = transpose(A)
 AAT = matmul(A,AT)
 ATA = matmul(AT,A)
 !take the eigens of AAT
-eigensAAT = eigenvals(AAT)
+eigensAAT = eigenvalshouseholder(AAT)
 !write(*,*)eigensAAT
 singVals = sqrt(eigensAAT)
 !Assign the singVals to their own matrix.  
