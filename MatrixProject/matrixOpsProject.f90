@@ -899,7 +899,8 @@ allocate(R(n,m))
 allocate(Q(m,m))
 !begin
 eigenMatrix = inMatrix  
-!check size of the matrix input: !for smaller size, calculate the eigenvalues with the determinant.  
+!check size of the matrix input: !for smaller size, calculate the eigenvalues with the determinant.  Cannot have a 1x2 matrix, at that point
+!it's just a vector. 
 if (n==2) then
 
 end if
