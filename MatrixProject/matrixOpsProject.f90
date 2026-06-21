@@ -30,7 +30,7 @@ allocate(VT(m,m))
 
 !remember that n = nRows, m = nCols
 !! Insert file values into the matrix from input 10.
-open(20,file='matrix2.txt', status='old') !process still works for matrix4.  
+open(20,file='matrix4.txt', status='old') !process still works for matrix4.  
 !! Create file-read method for this.  Basically just from one input to another, or allow multi-input?  File works better I think.  
 do i=1,n,1
     do j=1,m,1
@@ -831,74 +831,6 @@ deallocate(v)
 !call printMatrix(outMatrix,n,m)
 end function hessenberg
 
-!Updated eigenvalues function with Hessenberg Reduction and Schur stuff.  
-function eigenvals(inMatrix, iterations) RESULT(eigens)
-implicit none
-real, intent(in)::inMatrix(:,:)
-integer, intent(in), optional::iterations
-integer::n,m,actIters,i
-real::s, tol
-real, dimension(:),allocatable::eigens
-real, dimension(:,:),allocatable::eigenMatrix,shift, Q, R
-!Check if iterations input is present, if not, default to 1000.  
-tol = 1.00e-5
-if (present(iterations)) then 
-    actIters = iterations
-else
-    actIters = 100
-end if
-n = size(inMatrix,dim=1) !#rows
-m = size(inMatrix,dim=2) !#cols
-!Allocate the vars 
-allocate(eigens(m))
-allocate(eigenMatrix(n,m))
-allocate(shift(n,m))
-allocate(R(n,m))
-allocate(Q(m,m))
-!!!CREATE CONDITION CHECK FOR MATRIX SIZE, CHOOSE WISELY.
-!if matrix size is less than 4 go with reg qr algorithm, else go with the shifted version.  Use Hessenberg for both regardless.  
-!!convert to upper hessenberg form.
-eigenMatrix = inMatrix  
-eigenMatrix = Hessenberg(eigenMatrix)
-if (n<50) then 
-    !Add previous code here. 
-    do i=1,actIters,1
-    !these two work well enough with 1000 iters for 3x3, 4x4 as well.  Tolerance very good.  
-        call QR(eigenMatrix,Q,R)
-        eigenMatrix= matmul(R,Q)
-        Q=0 !reset values
-        R=0 !reset values afterwards; junk values appear more frequently over time.  
-    end do 
-else
-!!Now do the algorithm.  Should be more accurate and converge quicker.  
-    do i=1,actIters,1
-        !s is iterative shift
-        s = eigenMatrix(n,n)
-        shift = s*eye(n,n)
-        !call printMatrix(shift,n,n)
-        call QR(eigenMatrix-shift,Q,R) !assigns both Q and R
-        eigenMatrix = matmul(R,Q)+shift !Check if there's one for matrix addition.  SHIFTS AREN'T ADDING UP.  
-    end do
-end if 
-!Now isolate and sort the eigenvals.  
-!Eigenvals are going to lie along the diagonal, so grab them like before.  
-!use array eigens.  
-do i=1,n,1
-    if (abs(eigenMatrix(i,i))<tol) then 
-        eigens(i)=0.0
-    else
-        eigens(i)=eigenMatrix(i,i)
-    end if
-end do
-!then sort them.  
-eigens = simpleSort(eigens)
-
-deallocate(eigenMatrix)
-deallocate(shift)
-deallocate(Q)
-deallocate(R)
-end function eigenvals
-
 !! Pseudo-Inverse() should return the pseudo-inverse of a given matrix.  Any size.  Function should work.  
 !Attempt 2 at Householder QR
 subroutine householderQR(inMatrix,Q,R)
@@ -967,7 +899,13 @@ allocate(R(n,m))
 allocate(Q(m,m))
 !begin
 eigenMatrix = inMatrix  
-if (n<50) then 
+!check size of the matrix input: !for smaller size, calculate the eigenvalues with the determinant.  
+if (n==2) then
+
+end if
+
+
+if (n<50.AND.n>2) then 
     !Add previous code here. 
     do i=1,actIters,1
     !these two work well enough with 1000 iters for 3x3, 4x4 as well.  Tolerance very good.  
@@ -1210,5 +1148,4 @@ deallocate(A)
 deallocate(freeCols)
 end function solveSystem
 !Next step after SVD is to create Moore-Penrose Pseudoinverse, which should be the last NEW thing for a long minute.  
-
 end program matrixOperations
