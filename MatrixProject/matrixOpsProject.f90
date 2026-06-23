@@ -4,7 +4,7 @@ implicit none
 !! Should determine Reduced Row Echelon Form using a radix sort of values
 !! NOTE: MAKE SURE THAT THE FILE IS WRITTEN IN ORDER: FIRST ROW->NthRow n=noRows, m = noCols
 integer::n,m,i,j,retty !Assigns values of row length and column height
-real,dimension(:,:),allocatable::mymatrix,returnMatrix,inv,Q,R,reye,outerprod,retMat2, U, VT, S,L1,U1
+real,dimension(:,:),allocatable::mymatrix,returnMatrix,inv,Q,R,reye,outerprod,retMat2, U, VT, S,L1,U1, remult
 real,dimension(:),allocatable::vec,eigs,vec2,vec3,S1
 real::determinant,normal
 
@@ -27,10 +27,11 @@ allocate(U(n,n))
 allocate(S1(m))
 allocate(S(n,m))
 allocate(VT(m,m))
+allocate(remult(n,m))
 
 !remember that n = nRows, m = nCols
 !! Insert file values into the matrix from input 10.
-open(20,file='matrix4.txt', status='old') !process still works for matrix4.  
+open(20,file='matrix2.txt', status='old') !process still works for matrix4.  
 !! Create file-read method for this.  Basically just from one input to another, or allow multi-input?  File works better I think.  
 do i=1,n,1
     do j=1,m,1
@@ -109,13 +110,21 @@ outerprod = outerProduct(vec2,vec3)
 call SVD(myMatrix,U,S,VT)
 
 write(*,*)'U Matrix: '
-call printMatrix(U)
+call printMatrix(U(1:3,1:2))
 
 write(*,*)'Sigma Matrix: '
-call printMatrix(S)
+call printMatrix(S(1:2,1:2))
 
 write(*,*)'V Transpose Matrix: '
-call printMatrix(VT)
+call printMatrix(VT(1:2,1:3))
+
+
+write(*,*)'Reconstructed Matrix:'
+remult=matmul(matmul(U(1:3,1:2),S(1:2,1:2)),VT(1:2,1:3))
+call printMatrix(remult)
+
+write(*,*)'Original Matrix:'
+call printMatrix(mymatrix)
 
 !call printMatrix(mymatrix,n,m)
 close(20)
@@ -880,7 +889,7 @@ implicit none
 real, intent(in)::inMatrix(:,:)
 integer, intent(in), optional::iterations
 integer::n,m,actIters,i
-real::s, tol
+real::s, tol, trace,disc
 real, dimension(:),allocatable::eigens
 real, dimension(:,:),allocatable::eigenMatrix,shift, Q, R
 tol = 1.00e-5
@@ -902,7 +911,16 @@ eigenMatrix = inMatrix
 !check size of the matrix input: !for smaller size, calculate the eigenvalues with the determinant.  Cannot have a 1x2 matrix, at that point
 !it's just a vector. 
 if (n==2) then
-
+    !calculate the trace first (add all vals along the diagonal)
+    trace=0.0
+    do i=1,n,1
+        trace=trace+eigenMatrix(i,i)
+    end do
+    !once trace is calculated, you can enter the equation for the eigenvals. 
+    !calculate the discriminant
+    disc=trace**2 - (4*det(eigenMatrix))
+    eigens(1)=(trace+sqrt(disc))/2
+    eigens(2)=(trace-sqrt(disc))/2
 end if
 
 
@@ -927,13 +945,16 @@ else
         eigenMatrix = matmul(R,Q)+shift !Check if there's one for matrix addition.  SHIFTS AREN'T ADDING UP.  
     end do
 end if 
-do i=1,n,1
-    if (abs(eigenMatrix(i,i))<tol) then 
-        eigens(i)=0.0
-    else
-        eigens(i)=eigenMatrix(i,i)
-    end if
-end do
+!only fulfill this condition if larger than 2, otherwise skip right to sorting.  
+if (n.gt.2) then
+    do i=1,n,1
+        if (abs(eigenMatrix(i,i))<tol) then 
+            eigens(i)=0.0
+        else
+            eigens(i)=eigenMatrix(i,i)
+        end if
+    end do
+end if
 !then sort them.  
 eigens = simpleSort(eigens)
 write(*,*)eigens
