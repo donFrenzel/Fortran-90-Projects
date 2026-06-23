@@ -4,7 +4,7 @@
 - RREF -> RREF(inputMatrix)
 - Gauss-Jordan Elimination -> GaussJordan(inputMatrix)
 - Determinant (only for Square for now) -> det(matrix,n,m) *n,m autodetection to come later
-- Inverse -> inverse(matrix,n,m) *n,m autodetection to come later
+- Inverse -> inverse(matrix,n,m) 
 - Outer Product -> outerProduct(vector1,vector2)
 - Kronecker Product ->kroneckerProduct(matrix1,matrix2)
 - Linear Independence Check -> linearIndependence(matrix,n,m) *n,m autodetection to come later.  
