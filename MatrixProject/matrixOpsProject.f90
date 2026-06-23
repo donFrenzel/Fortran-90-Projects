@@ -128,7 +128,6 @@ outerprod = outerProduct(vec2,vec3)
 !write(*,*)'Original Matrix:'
 !call printMatrix(mymatrix)
 
-
 pseudoInv = pseudoinverse(mymatrix)
 write(*,*)'Pseudo-Inverse of the matrix'
 call printMatrix(pseudoInv)
@@ -904,7 +903,7 @@ end if
 n = size(inMatrix,dim=1) !#rows
 m = size(inMatrix,dim=2) !#cols
 !Allocate the vars 
-allocate(eigens(m))
+allocate(eigens(m)) !eigens being allocated to M.  This could be a problem as it doesn't check how many eigens there really are.  
 allocate(eigenMatrix(n,m))
 allocate(shift(n,m))
 allocate(R(n,m))
@@ -996,7 +995,7 @@ eigensAAT = eigenvalshouseholder(AAT)
 singVals = sqrt(eigensAAT)
 !Assign the singVals to their own matrix.  
 identS = eye(n,m)
-do i=1,m,1
+do i=1,size(singVals),1 !tie this to the number of singular values instead of to the columns.  Previously had an indexing error.  
     identS(i,i)=identS(i,i)*singVals(i)
 end do
 !works right now
@@ -1013,7 +1012,7 @@ deallocate(eigensAAT)
 !u_i=1/(sv_i)*A*v_i
 !basically the ith vector of u is equal to 1/ith singVal multiplied by the matrix multiplication of the original matrix and the eigenvectors.  
 Uproto=0.0
-do i=1,n,1
+do i=1,n,1 
     Uproto(:,i) = matmul(A,eigenvecs(:,i))*(1/singVals(i))
 end do
 U=Uproto
@@ -1208,11 +1207,6 @@ do i=1,n,1
         end if
     end do
 end do
-write(*,*)'Sigma Matrix after transformation'
-call printMatrix(S)
-call printMatrix(VT)
-call printMatrix(U)
-
 !So now what I can do is calculate exactly how to multiply them together.
 invMatrix = matmul(transpose(VT),matmul(transpose(S),transpose(U)))
 deallocate(U)
