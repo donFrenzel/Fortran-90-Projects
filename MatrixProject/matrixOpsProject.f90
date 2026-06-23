@@ -4,7 +4,7 @@ implicit none
 !! Should determine Reduced Row Echelon Form using a radix sort of values
 !! NOTE: MAKE SURE THAT THE FILE IS WRITTEN IN ORDER: FIRST ROW->NthRow n=noRows, m = noCols
 integer::n,m,i,j,retty !Assigns values of row length and column height
-real,dimension(:,:),allocatable::mymatrix,returnMatrix,inv,Q,R,reye,outerprod,retMat2, U, VT, S,L1,U1, remult
+real,dimension(:,:),allocatable::mymatrix,returnMatrix,inv,Q,R,reye,outerprod,retMat2, U, VT, S,L1,U1, remult,pseudoInv
 real,dimension(:),allocatable::vec,eigs,vec2,vec3,S1
 real::determinant,normal
 
@@ -29,9 +29,11 @@ allocate(S(n,m))
 allocate(VT(m,m))
 allocate(remult(n,m))
 
+allocate(pseudoInv(n,m))
+
 !remember that n = nRows, m = nCols
 !! Insert file values into the matrix from input 10.
-open(20,file='matrix2.txt', status='old') !process still works for matrix4.  
+open(20,file='matrix4.txt', status='old') !process still works for matrix4.  
 !! Create file-read method for this.  Basically just from one input to another, or allow multi-input?  File works better I think.  
 do i=1,n,1
     do j=1,m,1
@@ -107,24 +109,29 @@ outerprod = outerProduct(vec2,vec3)
 !eigs=eigenvalsHouseholder(myMatrix)
 
 !SVD now works!
-call SVD(myMatrix,U,S,VT)
+!call SVD(myMatrix,U,S,VT)
 
-write(*,*)'U Matrix: '
-call printMatrix(U(1:3,1:2))
+!write(*,*)'U Matrix: '
+!call printMatrix(U(1:3,1:2))
 
-write(*,*)'Sigma Matrix: '
-call printMatrix(S(1:2,1:2))
+!write(*,*)'Sigma Matrix: '
+!call printMatrix(S(1:2,1:2))
 
-write(*,*)'V Transpose Matrix: '
-call printMatrix(VT(1:2,1:3))
+!write(*,*)'V Transpose Matrix: '
+!call printMatrix(VT(1:2,1:3))
 
 
-write(*,*)'Reconstructed Matrix:'
-remult=matmul(matmul(U(1:3,1:2),S(1:2,1:2)),VT(1:2,1:3))
-call printMatrix(remult)
+!write(*,*)'Reconstructed Matrix:'
+!remult=matmul(matmul(U(1:3,1:2),S(1:2,1:2)),VT(1:2,1:3))
+!call printMatrix(remult)
 
-write(*,*)'Original Matrix:'
-call printMatrix(mymatrix)
+!write(*,*)'Original Matrix:'
+!call printMatrix(mymatrix)
+
+
+pseudoInv = pseudoinverse(mymatrix)
+write(*,*)'Pseudo-Inverse of the matrix'
+call printMatrix(pseudoInv)
 
 !call printMatrix(mymatrix,n,m)
 close(20)
@@ -775,10 +782,7 @@ allocate(v1R(vecLen1,1))
 v2T = reshape(v2, shape=[1,vecLen2])!Performs a transpose.  
 v1R = reshape(v1, shape=[vecLen1,1])
 !now perform the multiplication
-!call printMatrix(v1,vecLen1,1)
-!call printMatrix(v2T,1,vecLen2)
 outMatrix = matmul(v1R,v2T)
-!call printMatrix(outMatrix,vecLen1,vecLen2)
 deallocate(v1R,v2T)
 end function outerProduct
 
@@ -837,7 +841,6 @@ end do
 outMatrix = roundSmalls(outMatrix)
 deallocate(x)
 deallocate(v)
-!call printMatrix(outMatrix,n,m)
 end function hessenberg
 
 !! Pseudo-Inverse() should return the pseudo-inverse of a given matrix.  Any size.  Function should work.  
@@ -930,7 +933,6 @@ if (n<50.AND.n>2) then
     !these two work well enough with 1000 iters for 3x3, 4x4 as well.  Tolerance very good.  
         call householderQR(eigenMatrix,Q,R)
         eigenMatrix= matmul(R,Q)
-        !call printMatrix(eigenMatrix)
         Q=0 !reset values
         R=0 !reset values afterwards; junk values appear more frequently over time.  
     end do 
@@ -940,7 +942,6 @@ else
         !s is iterative shift
         s = eigenMatrix(n,n)
         shift = s*eye(n,n)
-        !call printMatrix(shift,n,n)
         call householderQR(eigenMatrix-shift,Q,R) !assigns both Q and R
         eigenMatrix = matmul(R,Q)+shift !Check if there's one for matrix addition.  SHIFTS AREN'T ADDING UP.  
     end do
@@ -957,7 +958,6 @@ if (n.gt.2) then
 end if
 !then sort them.  
 eigens = simpleSort(eigens)
-write(*,*)eigens
 deallocate(eigenMatrix)
 deallocate(shift)
 deallocate(Q)
@@ -1003,7 +1003,6 @@ end do
 eigenvecs = eigenvectors(ATA,eigensAAT) !gets the V matrix essentially.  
 VT=transpose(eigenvecs)!and this is officially VT.  
 !write(*,*)'V Transpose Matrix:'
-!call printMatrix(VT,m,m)
 deallocate(AT)
 deallocate(AAT)
 deallocate(ATA)
@@ -1018,11 +1017,7 @@ do i=1,n,1
     Uproto(:,i) = matmul(A,eigenvecs(:,i))*(1/singVals(i))
 end do
 U=Uproto
-!write(*,*)'U Matrix:'
-!call printMatrix(U,n,n)
 S = identS !Sigma Matrix is now in full effect.  Works amazingly!
-!write(*,*)'Sigma Matrix:'
-!call printMatrix(S,n,m)
 end subroutine SVD
 
 !!Might also be good to do alternate *forward solving* version using other website.  
@@ -1049,9 +1044,7 @@ do k=1,size(eigens),1
     AR = inMatrix-eigens(k)*eye(n,m) !swap eigens in position i.
     !write(*,*)'This part of the code is running!'
     !Here is where it can be functionalized.  
-    !call printMatrix(RREF(AR),n,m) !issue is not with RREF.  DEFFO LOOK INTO SOLVESYSTEM.  SUS!
     eigenVector = solveSystem(AR)
-    !call printMatrix(eigenVector,n,m+1) !look into how solvesystem works to find the bug.  
     eigenVector = eigenVector/Norm(eigenVector) !normalize eigenvectors.  
     eigenMatrix(k,:) = eigenVector
     eigenVector=0.0
@@ -1169,5 +1162,61 @@ end do
 deallocate(A)
 deallocate(freeCols)
 end function solveSystem
+
+!Function that gives the determinant for nonsquare matrices (where m<n)
+function gramDeterminant(inMatrix) RESULT(gramDet)
+implicit none
+real,intent(in)::inMatrix(:,:)
+real,dimension(:,:),allocatable::AT,ATA
+integer::n,m
+real::gramDet
+n = size(inMatrix, dim=1) !#rows
+m = size(inMatrix, dim=2) !#columns
+allocate(AT(m,n))
+allocate(ATA(m,m))
+!check for condition
+if(m.gt.n) then 
+    gramDet=0.0
+    return
+end if
+AT=transpose(inMatrix)
+ATA=matmul(AT,inMatrix)
+gramDet=det(ATA)
+gramDet=sqrt(gramDet)!set it to its sqrt
+deallocate(AT)
+deallocate(ATA)
+end function gramDeterminant
 !Next step after SVD is to create Moore-Penrose Pseudoinverse, which should be the last NEW thing for a long minute.  
+function pseudoinverse(inMatrix) RESULT(invMatrix)
+implicit none
+real,intent(in)::inMatrix(:,:)
+real,dimension(:,:),allocatable::U,S,VT,invMatrix
+integer::n,m,i,j
+n = size(inMatrix, dim=1) !#rows
+m = size(inMatrix, dim=2) !#columns
+allocate(U(n,n))
+allocate(S(n,m))
+allocate(VT(m,m))
+allocate(invMatrix(m,n)) !specifically for output
+call SVD(inMatrix,U,S,VT) !fills and assigns values.  
+write(*,*)'Sigma Matrix'
+call printMatrix(S)
+do i=1,n,1
+    do j=1,m,1
+        if(S(i,j).gt.0.0) then 
+            S(i,j)=1.0/S(i,j)
+        end if
+    end do
+end do
+write(*,*)'Sigma Matrix after transformation'
+call printMatrix(S)
+call printMatrix(VT)
+call printMatrix(U)
+
+!So now what I can do is calculate exactly how to multiply them together.
+invMatrix = matmul(transpose(VT),matmul(transpose(S),transpose(U)))
+deallocate(U)
+deallocate(S)
+deallocate(VT)
+end function pseudoinverse
 end program matrixOperations
