@@ -3,21 +3,24 @@
 *Matrix Functions:*
 - RREF -> RREF(inputMatrix)
 - Gauss-Jordan Elimination -> GaussJordan(inputMatrix)
-- Determinant (only for Square for now) -> det(matrix,n,m) *n,m autodetection to come later
-- Inverse -> inverse(matrix,n,m) 
+- Determinant (only for Square for now) -> det(matrix)
+- Gram Determinant -> gramDet(matrix)
+- Inverse -> inverse(matrix) 
 - Outer Product -> outerProduct(vector1,vector2)
 - Kronecker Product ->kroneckerProduct(matrix1,matrix2)
-- Linear Independence Check -> linearIndependence(matrix,n,m) *n,m autodetection to come later.  
+- Linear Independence Check -> linearIndependence(matrix)
 - Hessenberg Reduction -> hessenberg(inputMatrix)
 - RoundSmalls (rounds to zero for small vals in a matrix) -> roundSmalls(inputMatrix, precision=(DEFAULT=0.00001))
 - Eigenvalues (QR Algorithm & QR with shifts) -> eigenvals(inputMatrix, iterations=(DEFAULT=100))
+- Eigenvectors -> eigenvectors(inputMatrix) 
+- Moore-Penrose Pseudo-Inverse -> pseudoinverse(inputMatrix)
 
 *Matrix Subroutines:
 - LU Decomposition (It's there but it's rudimentary - still needs implementation on its own as a subroutine)
-- QR Decomposition -> QR(inputMatrix,n,m,Q,R) *Q & R must be predefined for subroutine output.  n,m autodetection to come later)
-- SVD (limited functionality) -> SVD(inputMatrix,U,S,VT) *U,S,VT must be predefined in program for subroutine output.
+- QR Decomposition -> QR(inputMatrix,Q,R) *Q & R must be predefined for subroutine output
+- Singular Value Decomposition -> SVD(inputMatrix,U,S,VT) *U,S,VT must be predefined in program for subroutine output.
 - Givens -> givens(a,b,c,s) *c,s must be predefined in program for subroutine output.
-- Print Matrix -> printMatrix(inputMatrix,n,m) *n,m autodetection to come later.  
+- Print Matrix -> printMatrix(inputMatrix)
 
 
 
