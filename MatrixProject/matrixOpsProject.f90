@@ -140,7 +140,25 @@ stop
 contains 
 
 !!!BASIC FUNCTIONS INCLUDE printMatrix, norm, and custom sign function.  
-!Define print matrix subroutine; inputs are the matrix and number of rows.  Rets matrix as-is.  
+!read a matrix from a file.  
+function readMatrix(filename,n,m) RESULT(matrix)
+implicit none
+integer,intent(in)::n,m
+character(len=*),intent(in)::filename
+real,dimension(:,:),allocatable::matrix
+allocate(matrix(n,m))
+open(20,file=filename, status='old') !process still works for matrix4.  
+!! Create file-read method for this.  Basically just from one input to another, or allow multi-input?  File works better I think.  
+do i=1,n,1
+    do j=1,m,1
+        !!!loop through and fill matrix values in.  
+        read(20,*)matrix(i,j)
+    end do
+end do
+close(20)
+end function readMatrix
+
+!Define print matrix subroutine; inputs are the matrix and number of rows.  Rets matrix as-is. 
 subroutine printMatrix(inMatrix)
 implicit none
 real,intent(in)::inMatrix(:,:)
