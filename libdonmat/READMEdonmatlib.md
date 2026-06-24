@@ -65,11 +65,27 @@ For this portion of the guide, I will be going over the various functions and su
 **linearindependence(inMatrix)**
   - This function just outputs a 0 if linearly dependent and a 1 if linearly independent and takes a matrix as its only argument.
 
-**
-### Subroutines:
-*Note, all subroutines require you to write 'call (name of subroutine)' 
-*Also, subroutine outputs must be entered as inputs, as subroutines can only use existing input values as outputs.
+**outerproduct(vector1,vector2)**
+  - This function outputs the matrix outer product of two vectors.  Input is two vectors, the output is their outer product in matrix form.
 
+**kroneckerproduct(matrix1,matrix2)**
+  - This function computes the kronecker product of two matrices.  It takes two matrices as input and has their product as output.  
+
+**hessenberg(matrix)**
+  - This function takes a matrix as input and converts it into Upper Hessenberg Form, which happens to be the output.  
+
+**eigenvalshouseholder(matrix, iterations=50)**
+  - This function computes the eigenvalues of any matrix using the QR Algorithm with Householder Reflections.  It outputs the eigenvalues in sorted order, from greatest to least, in a single array.  It has a default of 50 iterations, but may be set to whatever you may please. 
+
+**eigenvectors(matrix,eigenvalues)**
+  - This function takes a matrix and an array of eigenvalues as input arguements and outputs the matrix of eigenvectors.  
+
+**solvesystem(matrix)**
+  - This function takes a matrix as input and basically reduces it to gaussian form to then solve for the x1,x2,...,xn present in the matrix.  It does so in the far-right column, and outputs the values there as an array of type real 'solutions'.  Useful for solving systems of equations.  
+
+### Subroutines:
+*Note, all subroutines require you to write 'call (name of subroutine)'*
+*Also, subroutine outputs must be entered as inputs, as subroutines can only use existing input values as outputs, hence why all of the below (except print) have some of their inputs listed as outputs*
 
 **printmatrix(matrix)**
   - This subroutine simply prints the matrix to the terminal.  It has no output and it's input is just the matrix.
@@ -78,6 +94,10 @@ For this portion of the guide, I will be going over the various functions and su
   - This subroutine computes the LU Decomposition of the input matrix.  It takes three matrices are arguments, though two are rewritten by the subroutine (L & U), and returns L & U in place back to the program in their current forms.  
 
 **QR(matrix,Q,R)**
+  - This subroutine takes a matrix as input and computes the QR Decomposition using Householder Reflections.  It takes Q & R as inputs and uses them as outputs.  Works better and is more generally applicable than gramschmidt QR.  Utilized in eigenvalshouseholder().  
 
 **gramschmidtQR(matrix,Q,R)**
   - This subroutine computes the Gram-Schmidt Method for QR Decomposition.  It takes three matrices as arguments, those being the input matrix, Q, and R, which are reallocated to match the needs of the input matrix and are the outputs of the subroutine.  
+
+**SVD(matrix,U,S,VT)**
+  - This subroutine computes the Singular Value Decomposition of the input matrix and has input/output's U, S, and VT (U, Sigma, & V-transpose, respectively).  
