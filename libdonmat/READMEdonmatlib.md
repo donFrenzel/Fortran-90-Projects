@@ -1,6 +1,6 @@
 # An Official Guide to libdonmat
 
-libdonmat is an extensive matrix operations library built for Fortran 90, and though it is general use, I built it specifically for a few machine learning projects.  That being said, it is open and free to use.  I have included the module .f90 file as well, so that it can be better understood.  
+libdonmat is a matrix operations library built in and for Fortran 90, and though it is general use, I built it specifically for a few machine learning projects.  That being said, it is open and free to use.  I have included the module .f90 file as well, so that it can be better understood.  
 
 ## **How to use:**
 
