@@ -15,6 +15,6 @@ Once your file is fully compiled, you may run it with ./filename.exe, as you wou
 
 For this portion of the guide, I will be going over the various functions and subroutines present in the library in their order of appearance/complexity.  
 
-Functions: 
+### Functions: 
 
 
