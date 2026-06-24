@@ -5,8 +5,7 @@ libdonmat is a matrix operations library built in and for Fortran 90, and though
 ## **How to use:**
 
 Navigate to the libdonmat.a file in this repository folder, then click on it and find the download button that says 'Download Raw File' when you hover over it.  
-Once downloaded, it is ready for use, in which you merely write 'use libdonmat' in your program file right after the program declaration (implicit none should still declared in the program body, just after the 'use' statement.  
-
+Once downloaded, it is ready for use, in which you merely write 'use libdonmat' in your program file right after the program declaration (implicit none should still declared in the program body, just after the 'use' statement.  (Refer to sample.f90 for a sample of how to call/run a program using this library)
 
 When you would normally compile your code in the terminal use the format: *gfortran -I. -o sample.exe sample.f90 .\libdonmat.a*
 
