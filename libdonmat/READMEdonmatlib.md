@@ -26,8 +26,58 @@ For this portion of the guide, I will be going over the various functions and su
   - Takes a vector of any length as input and outputs its norm as a type real number.  
 
 **sgn(value)**
-  - Takes its input as a single value, whether it be integer, real, or double precision, and converts it to either a 1 or a -1 depending on its sign.  Simple sign function.  
+  - Takes its input as a single value, whether it be integer, real, or double precision, and converts it to either a 1 or a -1 depending on its sign.  Simple sign function.
+
+**givens(a,b,c,s)**
+  - Computes the givens rotations values for two real numbers (a,b) and outputs their cosine (c) and sine (s) accordingly.  
+
+**roundSmalls(matrix,precision=1.00e-5)**
+  - Takes a matrix as input and rounds down all values smaller than the optional precision definition to zero.  Outputs the rounded matrix.  
+  - optional precision value input, with the default value being 1.00e-5.  You may set it as low or as high as you would like.
+
+**eye(#rows,#columns,rightShift=0,downShift=0)**
+  - My equivalent of the python eye() function.  It basically creates an identity matrix of the given shape, with the rightshift and downshift values selecting where the diagonal starts.  Output is an identity matrix with 1's along the diagonal (or in a diagonal pattern if specified)
+
+**simplesort(array)**
+  - Simplesort is just my own simple sorting algorithm I made for one of the other functions.  It isn't very efficient, but it basically extracts the maximum value from one array and places it into the sorted array.  It sorts them in descending order and returns the sorted array.  
+
+**rowswap(matrix,row1,row2)**
+  - Rowswap takes an input matrix and two row indices, then swaps the rows at those indices in the input array, and then outputs a copy of the input array with those rows swapped.  
+
+**Gaussian(matrix)**
+  - Gaussian is simply the function name for Gaussian Elimination.  It converts the matrix into upper triangular form, though does not reduce to leading 1's for the output (this can be done easily enough later on).  The output for this function is the upper triangular matrix without leading 1's.
+
+**RREF(matrix)**
+  - RREF computes the Reduced Row Echelon Form for the input matrix, basically just the full reduction into leading 1's form for a square matrix.
+
+**det(matrix)**
+  - Det computes the determinant of a square matrix and outputs the Determinant found as a type real value.  
+
+**gramdeterminant(matrix)**
+  - This function computes the Gram Determinant of a given matrix, which is just taking the determinant of A<sup>T</sup>A.  It returns it as a type real value.  
+
+**inverse(matrix)**
+  - Inverse returns the inverse matrix of the input matrix, so long as that matrix is invertible.  It uses LU Decomposition for this.  It returns the inverse matrix of the input.  
+
+**pseudoinverse(matrix)**
+  - This function takes the Moore-Penrose Pseudo Inverse of a matrix which would not normally be invertible.  The output is the aforementioned matrix, whose size   will be the transpose of the initial matrix.  
+
+**linearindependence(inMatrix)**
+  - This function just outputs a 0 if linearly dependent and a 1 if linearly independent and takes a matrix as its only argument.
+
+**
 ### Subroutines:
+*Note, all subroutines require you to write 'call (name of subroutine)' 
+*Also, subroutine outputs must be entered as inputs, as subroutines can only use existing input values as outputs.
+
 
 **printmatrix(matrix)**
-  - This function simply prints the matrix to the terminal.  It has no output and it's input is just the matrix.  
+  - This subroutine simply prints the matrix to the terminal.  It has no output and it's input is just the matrix.
+
+**LU(matrix,L,U)**
+  - This subroutine computes the LU Decomposition of the input matrix.  It takes three matrices are arguments, though two are rewritten by the subroutine (L & U), and returns L & U in place back to the program in their current forms.  
+
+**QR(matrix,Q,R)**
+
+**gramschmidtQR(matrix,Q,R)**
+  - This subroutine computes the Gram-Schmidt Method for QR Decomposition.  It takes three matrices as arguments, those being the input matrix, Q, and R, which are reallocated to match the needs of the input matrix and are the outputs of the subroutine.  
