@@ -5,4 +5,4 @@ Foreword: This repo posesses a few different folders, the first of which is the 
 
 Projects: 
 - Integer->Binary Converter (with support for negative numbers) (Although more of a proof of concept)
-- Matrix Operations Library -> There is a readme present in the file with more detail, but the gist of it is to create my own library for matrix operations since Fortran 90 does not support any operations by default except for dot_product, matmul, & transpose.  
+- Matrix Operations Library -> libdonmat; check the folder's readme.  
