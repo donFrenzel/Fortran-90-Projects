@@ -10,7 +10,7 @@ Once downloaded, it is ready for use, in which you merely write 'use libdonmat' 
 
 When you would normally compile your code in the terminal use the format: *gfortran -I. -o sample.exe sample.f90 .\libdonmat.a*
 
-Once your file is fully compiled, you may run it with ./filename.exe, as you would any other file.  You should be able to enter and use the functions present in the library as you please.  
+Once your file is fully compiled, you may run it with *./filename.exe* as you would any other file.  You should be able to enter and use the functions present in the library as you please.  
 
 ## **Functions, Subroutines, & Syntax:** 
 
