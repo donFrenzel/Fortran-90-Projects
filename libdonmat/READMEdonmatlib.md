@@ -22,7 +22,7 @@ For this portion of the guide, I will be going over the various functions and su
   - It is recommended that, per the sample file, you take them as read(*,*)m,n and then allocate your dimension datatype to them for proper program input.  Though I must note that you can also basically just hardcode the matrix out in the program body as well.
   - It returns a matrix with the exact specifications given as input from the text file, which needs to have each value on a different line.
 
-**Norm(vector)**
+**norm(vector)**
   - Takes a vector of any length as input and outputs its norm as a type real number.  
 
 **sgn(value)**
