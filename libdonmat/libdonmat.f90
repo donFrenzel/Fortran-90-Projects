@@ -754,7 +754,7 @@ contains
     end subroutine QR
 
     !Rewrite eigenValues 
-    function eigenvalsHouseholder(inMatrix,iterations) RESULT(eigens)
+    function eigenvals(inMatrix,iterations) RESULT(eigens)
     implicit none
     real, intent(in)::inMatrix(:,:)
     integer, intent(in), optional::iterations
@@ -829,7 +829,7 @@ contains
     deallocate(shift)
     deallocate(Q)
     deallocate(R)
-    end function
+    end function eigenvals
     !also make Span(), Rank()
     !Truncated SVD might be more interesting to look into.  
     !SVD Function is here!!!
@@ -858,7 +858,7 @@ contains
     AAT = matmul(A,AT)
     ATA = matmul(AT,A)
     !take the eigens of AAT
-    eigensAAT = eigenvalshouseholder(AAT)
+    eigensAAT = eigenvals(AAT)
     !write(*,*)eigensAAT
     singVals = sqrt(eigensAAT)
     !Assign the singVals to their own matrix.  
