@@ -74,7 +74,7 @@ For this portion of the guide, I will be going over the various functions and su
 **hessenberg(matrix)**
   - This function takes a matrix as input and converts it into Upper Hessenberg Form, which happens to be the output.  
 
-**eigenvalshouseholder(matrix, iterations=50)**
+**eigenvals(matrix, iterations=50)**
   - This function computes the eigenvalues of any matrix using the QR Algorithm with Householder Reflections.  It outputs the eigenvalues in sorted order, from greatest to least, in a single array.  It has a default of 50 iterations, but may be set to whatever you may please. 
 
 **eigenvectors(matrix,eigenvalues)**
