@@ -1,6 +1,6 @@
 # Fortran-90-Perceptron Project
 
-This is going to be my main repository for my Fortran 90 Perceptron Project.  The goal here is to create a simple perceptron which can take X1,X2 inputs and then predict unknowns based on the learned weights.  It is, in essence, a recreation of a Perceptron I wrote in Python in a Machine Learning Course I took.  
+This is going to be my main repository for my Fortran 90 Perceptron Project.  The goal here is to create a simple perceptron which can take Label, X1, & X2 inputs and then predict unknowns based on the learned weights.  It is, in essence, a recreation of a Perceptron I wrote in Python in a Machine Learning Course I took.  
 
 The components are: 
 - A Fortran 90 Implementation of the classic Perceptron Learning Algorithm 
