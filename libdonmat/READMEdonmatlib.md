@@ -94,7 +94,7 @@ For this portion of the guide, I will be going over the various functions and su
   - This subroutine computes the LU Decomposition of the input matrix.  It takes three matrices are arguments, though two are rewritten by the subroutine (L & U), and returns L & U in place back to the program in their current forms.  
 
 **QR(matrix,Q,R)**
-  - This subroutine takes a matrix as input and computes the QR Decomposition using Householder Reflections.  It takes Q & R as inputs and uses them as outputs.  Works better and is more generally applicable than gramschmidt QR.  Utilized in eigenvalshouseholder().  
+  - This subroutine takes a matrix as input and computes the QR Decomposition using Householder Reflections.  It takes Q & R as inputs and uses them as outputs.  Works better and is more generally applicable than gramschmidt QR.  Utilized in eigenvals().  
 
 **gramschmidtQR(matrix,Q,R)**
   - This subroutine computes the Gram-Schmidt Method for QR Decomposition.  It takes three matrices as arguments, those being the input matrix, Q, and R, which are reallocated to match the needs of the input matrix and are the outputs of the subroutine.  
