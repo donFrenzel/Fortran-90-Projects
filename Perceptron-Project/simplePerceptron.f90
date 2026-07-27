@@ -125,10 +125,6 @@ end if
 allocate(curRow(m)) !take all row values
 
 weights=0.0
-write(*,*)'in train now'
-write(*,*)weights
-write(*,*)inMatrix(1,:)
-write(*,*)n,m
 !main body of the function
 do i=1, actNumIters, 1
     sumErr = 0.0
@@ -193,7 +189,6 @@ allocate(predictions(n2)) !allocate to match the number of rows present in the t
 allocate(weights(m1)) !allocate weights for m1-1 (both m's same)
 allocate(testRow(m2)) !allocate to length of test set feature and label combination vector. 
 !main body
-write(*,*)'got to before weights training'
 call train(trainSet,weights,learningRate,numIters) !problem is with weights
 do i=1,n2,1
     testRow=testSet(i,:) !get whole testing row
@@ -206,6 +201,8 @@ end subroutine perceptron
 end module perceptronModule
 
 !for calling all modules + the general predictive model.  
+!to compile: gfortran -I. -o simplePerceptron.exe simplePerceptron.f90 .\libdonmat.a
+!to run: ./simplePerceptron.exe
 program simplePerceptron
 !library/module declarations
 use csvtotxt
@@ -218,11 +215,9 @@ character(len=255)::trainTxt,testTxt
 real,dimension(:),allocatable::testPreds,testActual
 real,dimension(:,:),allocatable::trainMatrix,testMatrix
 !read the training data
-call csv_to_txt('ANDperceptrontrain.csv',trainTxt,numR_train,numC_train)
-write(*,*)'Converted!',numR_train,numC_train
+call csv_to_txt('sampleperceptrontrain.csv',trainTxt,numR_train,numC_train)
 !read the testing data
-call csv_to_txt('ANDperceptrontest.csv',testTxt,numR_test,numC_test)
-write(*,*)'Converted!',numR_test,numC_test
+call csv_to_txt('sampleperceptrontest.csv',testTxt,numR_test,numC_test)
 !allocate
 allocate(trainMatrix(numR_train,numC_train))
 allocate(testMatrix(numR_test,numC_test))
@@ -232,13 +227,12 @@ allocate(testActual(numR_test))
 trainMatrix=readmatrix(trainTxt,numR_train,numC_train)
 testMatrix=readmatrix(testTxt,numR_test,numC_test)
 !then call the perceptron test 
-call perceptron(trainMatrix,testMatrix,testPreds,0.1,50)
+call perceptron(trainMatrix,testMatrix,testPreds,0.001,50)
 !and now compare the testPreds with the testActual
 testActual=testMatrix(:,1) !get only the labels
 !length of testPreds should be exactly equal so now loop through and keep track of the amount of errors in comparison to the whole.  
 write(*,*)testActual
 write(*,*)testPreds
 !comparison of test and predictions to come soon.  
-
 
 end program simplePerceptron
