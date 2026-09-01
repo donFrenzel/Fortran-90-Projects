@@ -6,5 +6,5 @@ Foreword: This repo posesses a few different folders, the first of which is the 
 Projects: 
 - Practice Problems; includes an Integer->Binary Converter (with support for negative numbers) (Although more of a proof of concept)
 - Matrix Operations Library -> libdonmat; check folder readme.
-- Simple Perceptron (Coming soon)
-- .csv filereader (pandas equivalent) (coming soon)
+- Simple Perceptron 
+- .csv filereader (pandas equivalent) 
